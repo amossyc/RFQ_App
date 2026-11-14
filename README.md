@@ -1,6 +1,6 @@
 # RFQ Automation App
 
-Automates the end-to-end RFQ (request-for-quotation) workflow for the SINWA portal:
+Automates the end-to-end RFQ (request-for-quotation) workflow for the customer's procurement portal:
 read RFQ emails from Outlook → export the RFQ from the portal → fill prices/remarks from
 a pricelist → import the completed file back → reply to the email with a summary → track
 history and produce a monthly outlier report.
@@ -42,7 +42,7 @@ Requirements (Windows):
 
 First run:
 
-1. Put the pricelist `.xlsm` into `pricelist/` (sheet **must** be named `SINWA`).
+1. Put the pricelist `.xlsm` into `pricelist/` (set the sheet name via `sheet_name` in `config.txt`).
 2. Edit `config.txt`:
    - set `sender_email` to the address the RFQ emails come from,
    - optionally set `check_interval_minutes`.
@@ -114,7 +114,7 @@ the app folder if relative.
 
 ## 5. Pricelist format (CRITICAL — read this first)
 
-The pricelist is an `.xlsm` with a sheet named **`SINWA`**. Columns:
+The pricelist is an `.xlsm`; the sheet name is set via `sheet_name` in `config.txt`. Columns:
 
 - `A` = IMPA code (6 digits). **May be blank** for items not yet in the IMPA catalog
   (those are still matched by description and stored under synthetic `NOCODE_n` keys).
@@ -268,8 +268,8 @@ processed check (so it re-runs even if already done).
 
 ## 12. Known business rules / gotchas (history — don't re-derive these)
 
-- **`999999`** is SINWA's placeholder for "no IMPA code" — never treat it as a real code.
-- SINWA **never buys** the non-pricelist items; flagging them is correct (do not add them
+- **`999999`** is the customer's placeholder for "no IMPA code" — never treat it as a real code.
+- The customer **never buys** the non-pricelist items; flagging them is correct (do not add them
   to the pricelist automatically).
 - "2025 tender price first, otherwise tender price, otherwise net price" is the price order.
 - "first brand" is the default; description overrides: `GOOD`→good tier,
@@ -298,7 +298,7 @@ processed check (so it re-runs even if already done).
 - There are many `test_*.py` scripts in the development workspace (not included here) that
   encode the expected behavior of the matcher/quote logic — worth re-creating if you change
   `fill_quote.py`.
-- The portal is reached via `sinwa.epbrowser.com`; Export/Import are text elements (`Export`,
+- The portal is reached via the configured `portal_domain` (in `config.txt`); Export/Import are text elements (`Export`,
   `Import`); Import opens a hidden `<input type=file>` (Playwright `expect_file_chooser`).
 - The pricelist changes frequently (daily/hourly); the app re-reads the `.xlsm` fresh on
   every run, so just drop the latest file into `pricelist/`.

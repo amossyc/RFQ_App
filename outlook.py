@@ -3,7 +3,10 @@ import sys
 import win32com.client
 import config
 
-RFQ_ENTRY_RE = re.compile(r"https?://sinwa\.epbrowser\.com/portal-ext/entry\?access=[A-Za-z0-9]+", re.IGNORECASE)
+RFQ_ENTRY_RE = re.compile(
+    r"https?://" + re.escape(config.PORTAL_DOMAIN or "your-portal.example.com") + r"/portal-ext/entry\?access=[A-Za-z0-9]+",
+    re.IGNORECASE,
+)
 RFQ_SENDER = config.SENDER_EMAIL
 
 def get_inbox():

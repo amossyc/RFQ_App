@@ -1,7 +1,7 @@
 # RFQ App configuration
 # Paths can be relative (to this app folder) or absolute.
 # Everything lives under this one folder by default:
-#   pricelist\        <- put the latest *.xlsm pricelist here (sheet must be named SINWA)
+#   pricelist\        <- put the latest *.xlsm pricelist here
 #   working\          <- exports + completed "-done.xlsx" files
 #   browser_profile\  <- keeps the portal logged in
 #   reports\          <- monthly outlier reports
@@ -19,3 +19,9 @@ check_interval_minutes = 15
 # The RFQ sender email address to watch for in the inbox.
 # Set this to the address your RFQ emails come from.
 sender_email = change-me@example.com
+
+# Pricelist sheet name (the worksheet inside the .xlsm that holds the data).
+sheet_name = YourSheetName
+
+# Portal domain (the portal's host, e.g. customer.epbrowser.com).
+portal_domain = customer.epbrowser.com

@@ -14,7 +14,7 @@ def newest_filled():
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print('Usage: python import_latest.py "https://sinwa.epbrowser.com/portal-ext/rfq/XXXXX"')
+        print('Usage: python import_latest.py "https://<portal>/portal-ext/rfq/XXXXX"')
         sys.exit(1)
     url = sys.argv[1]
     f = newest_filled()

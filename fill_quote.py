@@ -26,7 +26,8 @@ def num(v):
 def load_pricelist(path):
     data = {}
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
-    ws = wb["SINWA"]
+    sheet = config.SHEET_NAME or wb.sheetnames[0]
+    ws = wb[sheet]
     nocode = 0
     for row in ws.iter_rows(min_row=2, values_only=True):
         brands = []

@@ -19,6 +19,8 @@ _defaults = {
     "db": os.path.join(APP_DIR, "tracking.db"),
     "check_interval_minutes": "15",
     "sender_email": "",
+    "sheet_name": "",
+    "portal_domain": "",
 }
 
 _PATH_KEYS = {"pricelist_dir", "working_dir", "browser_profile", "reports_dir", "db"}
@@ -54,3 +56,5 @@ PROFILE = BROWSER_PROFILE
 CHECK_INTERVAL_MINUTES = int(_cfg.get("check_interval_minutes", "15"))
 
 SENDER_EMAIL = _cfg.get("sender_email", "")
+SHEET_NAME = _cfg.get("sheet_name", "")
+PORTAL_DOMAIN = _cfg.get("portal_domain", "")
