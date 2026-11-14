@@ -219,7 +219,8 @@ Tokenizer normalisations (`_meaningful_tokens` / `_size_tokens`):
 - `GENERIC_WORDS` (see the set in `fill_quote.py`) are ignored: includes `ELECTRIC`,
   `PNEUMATIC`, `HYDRAULIC`, `AUTOMATIC`, `MANUAL`, `POWER`, `INDUSTRIAL`, `DIA`, `HEAD`,
   `BODY`, `SPLIETHOFF`, `GROUP`, `CATALOG`, `REF`, and common English stopwords.
-- The text is split at `| IMPA / | SSM / | Ref. / | SPLIETHOFF` to drop catalog noise.
+- The text is split at `| IMPA / | SSM / | Ref.` and at the metadata markers
+  `Tender Category`, `Vessel Notes`, `Maker :` to drop catalog/metadata noise.
 
 ---
 
