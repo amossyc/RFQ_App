@@ -1,0 +1,88 @@
+import re
+import sys
+import win32com.client
+import config
+
+RFQ_ENTRY_RE = re.compile(r"https?://sinwa\.epbrowser\.com/portal-ext/entry\?access=[A-Za-z0-9]+", re.IGNORECASE)
+RFQ_SENDER = config.SENDER_EMAIL
+
+def get_inbox():
+    outlook = win32com.client.Dispatch("Outlook.Application")
+    ns = outlook.GetNamespace("MAPI")
+    return ns.GetDefaultFolder(6)  # 6 = Inbox
+
+def extract_entry_link(text):
+    m = RFQ_ENTRY_RE.search(text or "")
+    return m.group(0) if m else None
+
+def reply_done(msg, body=""):
+    reply = msg.Reply()
+    original = reply.Body  # quoted original message from the sender
+    reply.Body = (body + "\n\n" + original) if body else original
+    reply.Send()
+    return True
+
+def get_rfq_emails(unread_only=False):
+    inbox = get_inbox()
+    items = inbox.Items
+    try:
+        items = items.Restrict("[MessageClass]='IPM.Note'")
+    except Exception:
+        pass
+    try:
+        items.Sort("[ReceivedTime]", True)
+    except Exception:
+        pass
+    result = []
+    for msg in items:
+        try:
+            sender = (msg.SenderEmailAddress or "").lower()
+            if RFQ_SENDER not in sender:
+                continue
+            link = extract_entry_link(msg.Body) or extract_entry_link(msg.HTMLBody)
+            if not link:
+                continue
+            if unread_only and not msg.Unread:
+                continue
+            result.append({
+                "msg": msg,
+                "link": link,
+                "subject": msg.Subject,
+                "entry_id": getattr(msg, "EntryID", None),
+            })
+        except Exception:
+            continue
+    return result
+
+def scan(n=50):
+    inbox = get_inbox()
+    items = inbox.Items
+    try:
+        items = items.Restrict("[MessageClass]='IPM.Note'")
+    except Exception:
+        pass
+    try:
+        items.Sort("[ReceivedTime]", True)
+    except Exception:
+        pass
+    shown = 0
+    for msg in items:
+        if shown >= n:
+            break
+        try:
+            link = extract_entry_link(msg.Body) or extract_entry_link(msg.HTMLBody)
+            unread = "UNREAD" if msg.Unread else "read  "
+            print(f"{shown+1:>2}. [{unread}] {str(msg.ReceivedTime)[:16]} | {msg.SenderEmailAddress}")
+            print(f"     subj: {msg.Subject}")
+            if link:
+                print(f"     ENTRY LINK: {link}")
+            shown += 1
+        except Exception as e:
+            shown += 1
+            print(f"{shown:>2}. (skipped an item: {e})")
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "scan":
+        scan()
+    else:
+        print("Usage: python outlook.py scan")
