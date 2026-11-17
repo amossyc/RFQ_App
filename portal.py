@@ -6,6 +6,9 @@ import config
 PROFILE = config.PROFILE
 WORK = config.WORK
 
+class ImportFailed(Exception):
+    """Raised when the portal Import button can't be clicked/used within the timeout."""
+
 def _launch():
     p = sync_playwright().start()
     ctx = p.chromium.launch_persistent_context(
@@ -50,9 +53,9 @@ def import_quote(url, file_path):
         print("Opening RFQ page ...")
         page.goto(url, wait_until="domcontentloaded")
         btn = page.get_by_text("Import", exact=True).first
-        btn.wait_for(state="visible", timeout=30000)
+        btn.wait_for(state="visible", timeout=10000)
         print("Clicking Import and selecting file ...")
-        with page.expect_file_chooser(timeout=30000) as fc:
+        with page.expect_file_chooser(timeout=10000) as fc:
             btn.click()
         fc.value.set_files(file_path)
         print("File selected. Waiting for upload ...")
@@ -95,13 +98,16 @@ def process_rfq(entry_url, fill_callback, dest_dir=WORK):
         print("Filled:", filled)
 
         print("Clicking Import ...")
-        import_btn = page.get_by_text("Import", exact=True).first
-        import_btn.wait_for(state="visible", timeout=30000)
-        with page.expect_file_chooser(timeout=30000) as fc:
-            import_btn.click()
-        fc.value.set_files(filled)
-        page.wait_for_timeout(5000)
-        print("Import complete (Submit NOT clicked).")
+        try:
+            import_btn = page.get_by_text("Import", exact=True).first
+            import_btn.wait_for(state="visible", timeout=10000)
+            with page.expect_file_chooser(timeout=10000) as fc:
+                import_btn.click()
+            fc.value.set_files(filled)
+            page.wait_for_timeout(5000)
+            print("Import complete (Submit NOT clicked).")
+        except Exception as ex:
+            raise ImportFailed(f"Import button not usable within 10s: {ex}")
         return exported, filled
     finally:
         try:

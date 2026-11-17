@@ -125,6 +125,12 @@ def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_fil
             save_processed(processed)
             status = "replied with summary" if send_reply else "no reply sent"
             print(f"  COMPLETE ({status}, logged {len(lines)} lines)")
+        except portal.ImportFailed as ex:
+            print("  IMPORT FAILED:", ex)
+            if send_reply:
+                outlook.reply_done(e["msg"], "Import failed")
+            processed.add(key)
+            save_processed(processed)
         except Exception as ex:
             print("  ERROR:", ex)
         done += 1
@@ -159,6 +165,8 @@ def process_direct_link(link):
             print("      FLAG (manual):", f[0], f[1], f[2][:45])
         for a in rep.get("auto_matched", []):
             print("      AUTO-MATCH (review):", a[0], "->", a[1], a[2][:45])
+    except portal.ImportFailed as ex:
+        print("  IMPORT FAILED:", ex)
     except Exception as ex:
         print("  ERROR:", ex)
 

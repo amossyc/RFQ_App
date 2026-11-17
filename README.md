@@ -17,7 +17,9 @@ Microsoft Outlook (via `pywin32`) and Microsoft Edge (via Playwright).
 2. For each unprocessed email, `portal.process_rfq()` opens the link in a persistent Edge
    profile, clicks **Export** (downloads a randomly-named `.xlsx`), runs the fill, then
    clicks **Import** to upload the filled file. It never clicks **Submit** — a human
-   reviews and submits on the portal.
+   reviews and submits on the portal. If the **Import** button can't be clicked within
+   10 seconds, it raises `portal.ImportFailed`: the loop moves on to the next RFQ and
+   replies to that email with `Import failed`.
 3. `fill_quote.py` fills each line's List Price and Remarks from the pricelist.
 4. The filled file is saved as `<TRFQ>-done.xlsx` and the empty export is deleted.
 5. `outlook.reply_done()` replies to the email with a short summary (quoted/flagged/
