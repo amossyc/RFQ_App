@@ -292,7 +292,7 @@ processed check (so it re-runs even if already done).
 
 ---
 
-## 13. Notes for a future coding agent
+## 13. Additional notes
 
 - All the business logic lives in `fill_quote.py`; the other files are plumbing.
 - The `-done.xlsx` files are filled by writing columns `I` (List Price) and `K` (Remarks)
