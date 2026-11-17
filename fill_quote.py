@@ -404,13 +404,13 @@ def fill_quote(input_path, pricelist_path, output_path):
             desc = str(entry.get("desc") or "")
             if desc.strip():
                 impa_tokens = set(_meaningful_tokens(desc))
-                name_tokens = _meaningful_tokens(name)
-                overlap = sum(1 for t in name_tokens if t in impa_tokens)
+                name_tokens = set(_meaningful_tokens(name))
+                overlap = len(name_tokens & impa_tokens)  # distinct shared keywords
                 size_overlap = len(_size_tokens(name) & _size_tokens(desc))
                 volts = _voltage(name)
                 voltage_mismatch = bool(volts) and not (volts & _voltage(desc))
-                match_ratio = overlap / len(name_tokens) if name_tokens else 1.0
-                weak_match = len(name_tokens) >= 4 and match_ratio < 0.4
+                # trust the pricelist: >=4 distinct keyword matches => quote it
+                weak_match = len(name_tokens) >= 4 and overlap < 4
                 if (overlap == 0 and size_overlap == 0) or voltage_mismatch or weak_match:
                     flagged.append((line_ref, impa, "[IMPA mismatch] " + name[:45]))
                     ws.cell(row=r, column=9).value = 0
