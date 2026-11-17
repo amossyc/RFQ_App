@@ -19,7 +19,7 @@ def extract_entry_link(text):
     return m.group(0) if m else None
 
 def reply_done(msg, body=""):
-    reply = msg.Reply()
+    reply = msg.ReplyAll()  # reply to sender + all other recipients/CC
     original = reply.Body  # quoted original message from the sender
     reply.Body = (body + "\n\n" + original) if body else original
     reply.Send()
