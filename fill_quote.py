@@ -411,8 +411,9 @@ def fill_quote(input_path, pricelist_path, output_path):
                 size_overlap = len(_size_tokens(name) & _size_tokens(desc))
                 volts = _voltage(name)
                 voltage_mismatch = bool(volts) and not (volts & _voltage(desc))
-                # trust the pricelist: >=4 distinct keyword matches => quote it
-                weak_match = len(name_tokens) >= 4 and overlap < 4
+                # trust the pricelist: require min(4, pricelist keyword count) matches
+                required = min(4, len(impa_tokens))
+                weak_match = len(name_tokens) >= 4 and overlap < required
                 if (overlap == 0 and size_overlap == 0) or voltage_mismatch or weak_match:
                     flagged.append((line_ref, impa, "[IMPA mismatch] " + name[:45]))
                     ws.cell(row=r, column=9).value = 0
