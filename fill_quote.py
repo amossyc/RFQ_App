@@ -165,6 +165,8 @@ SYNONYMS = {
 
 def _meaningful_tokens(text):
     core = re.split(r"\s*\|\s*(?:IMPA|SSM|Ref\.)|Tender\s+Category|Vessel\s+Notes|Maker\s*:|Truncated", text or "", maxsplit=1, flags=re.IGNORECASE)[0]
+    # strip quoted brand names (e.g. "BAHCO") — metadata, not a descriptive keyword
+    core = re.sub(r'"[^"]*"', " ", core)
     # normalize "NO.2" / "NO 2" -> "NO2" (Phillips / size number)
     core = re.sub(r"NO\.\s*(\d)", r"NO\1", core, flags=re.IGNORECASE)
     core = re.sub(r"[^A-Za-z0-9. ]", " ", core).upper()
