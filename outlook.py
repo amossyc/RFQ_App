@@ -26,21 +26,36 @@ def reply_done(msg, body=""):
     return True
 
 PROCESSED_FOLDER = "RFQ Processed"
+FAILED_FOLDER = "RFQ Failed"
 
-def get_processed_folder():
+def _get_subfolder(name):
     inbox = get_inbox()
     try:
-        return inbox.Folders[PROCESSED_FOLDER]
+        return inbox.Folders[name]
     except Exception:
-        return inbox.Folders.Add(PROCESSED_FOLDER)
+        return inbox.Folders.Add(name)
 
-def move_to_processed(msg):
-    """Move a finished RFQ email out of the Inbox into the processed folder."""
+def get_processed_folder():
+    return _get_subfolder(PROCESSED_FOLDER)
+
+def get_failed_folder():
+    return _get_subfolder(FAILED_FOLDER)
+
+def move_to_folder(msg, folder):
+    """Move an email into the given Outlook folder."""
     try:
-        msg.Move(get_processed_folder())
+        msg.Move(folder)
         return True
     except Exception:
         return False
+
+def move_to_processed(msg):
+    """Move a finished RFQ email out of the Inbox into the processed folder."""
+    return move_to_folder(msg, get_processed_folder())
+
+def move_to_failed(msg):
+    """Move an RFQ email that failed import 3 times into the failed folder."""
+    return move_to_folder(msg, get_failed_folder())
 
 def _scan_folder(folder, unread_only=False):
     items = folder.Items
@@ -73,10 +88,11 @@ def _scan_folder(folder, unread_only=False):
 def get_rfq_emails(unread_only=False, include_processed=False):
     result = _scan_folder(get_inbox(), unread_only)
     if include_processed:
-        try:
-            result.extend(_scan_folder(get_processed_folder(), unread_only))
-        except Exception:
-            pass
+        for getter in (get_processed_folder, get_failed_folder):
+            try:
+                result.extend(_scan_folder(getter(), unread_only))
+            except Exception:
+                pass
     return result
 
 def scan(n=50):

@@ -9,6 +9,7 @@ import tracker
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROCESSED_FILE = os.path.join(APP_DIR, "processed.json")
+FAILED_FILE = os.path.join(APP_DIR, "failed_attempts.json")
 
 def extract_tq(subject):
     m = re.search(r"TQ\d+", subject or "")
@@ -31,6 +32,16 @@ def load_processed():
 def save_processed(s):
     with open(PROCESSED_FILE, "w", encoding="utf-8") as f:
         json.dump(sorted(s), f)
+
+def load_failed():
+    if os.path.exists(FAILED_FILE):
+        with open(FAILED_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_failed(d):
+    with open(FAILED_FILE, "w", encoding="utf-8") as f:
+        json.dump(d, f)
 
 def make_fill(prclist, ref=None):
     holder = {}
@@ -78,6 +89,7 @@ def build_summary(rfq_ref, rep):
 
 def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_filters=None, send_reply=True):
     processed = load_processed()
+    failed = load_failed()
     prclist = fill_quote.newest(os.path.join(fill_quote.PRICELIST_DIR, "*.xlsm"))
     if not prclist:
         print("No pricelist found in", fill_quote.PRICELIST_DIR)
@@ -127,12 +139,20 @@ def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_fil
             print(f"  COMPLETE ({status}, logged {len(lines)} lines)")
             outlook.move_to_processed(e["msg"])
         except portal.ImportFailed as ex:
-            print("  IMPORT FAILED:", ex)
-            if send_reply:
-                outlook.reply_done(e["msg"], "Import failed")
-            processed.add(key)
-            save_processed(processed)
-            outlook.move_to_processed(e["msg"])
+            failed[key] = failed.get(key, 0) + 1
+            save_failed(failed)
+            attempt = failed[key]
+            print(f"  IMPORT FAILED (attempt {attempt}/3):", ex)
+            if attempt >= 3:
+                if send_reply:
+                    outlook.reply_done(e["msg"], "Import failed")
+                processed.add(key)
+                save_processed(processed)
+                failed.pop(key, None)
+                save_failed(failed)
+                outlook.move_to_failed(e["msg"])
+                print("  -> gave up after 3 attempts; moved to RFQ Failed")
+            # else: leave in Inbox so it retries on the next run (not marked processed)
         except Exception as ex:
             print("  ERROR:", ex)
         done += 1
