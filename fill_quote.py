@@ -28,24 +28,54 @@ def load_pricelist(path):
     wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
     sheet = config.SHEET_NAME or wb.sheetnames[0]
     ws = wb[sheet]
+    # map columns from the header row (supports the "ALT" column layout); keep FIRST occurrence
+    header = [str(c.value or "").strip().lower() for c in ws[1]]
+    col = {}
+    for i, h in enumerate(header):
+        if h and h not in col:
+            col[h] = i
+    impa_col = col.get("impa", 0)
+    alt_col = col.get("alt")
+    desc_col = col.get("description", 3)
+    tender_col = col.get("tender price", 6)
+    tender25_col = col.get("2025 tender", 7)
+    net_col = col.get("net price", 8)
+    brand_col = col.get("brand", 9)
     nocode = 0
+    raw = {}
     for row in ws.iter_rows(min_row=2, values_only=True):
         brands = []
-        if row[9] not in (None, ""):
-            brands.append((str(row[9]).strip(), None))  # primary brand (price in tender/net cols)
-        for b in range(11, len(row), 2):  # L, N, P, ... -> alternatives, price in preceding col
+        if row[brand_col] not in (None, ""):
+            brands.append((str(row[brand_col]).strip(), None))  # primary brand (price in tender/net cols)
+        for b in range(brand_col + 2, len(row), 2):  # L, N, P, ... -> alternatives, price in preceding col
             brand = row[b]
             if brand not in (None, ""):
                 brands.append((str(brand).strip(), row[b - 1]))
-        entry = {"tender": row[6], "tender25": row[7], "net": row[8], "brands": brands, "desc": row[3]}
-        impa = row[0]
+        entry = {
+            "tender": row[tender_col],
+            "tender25": row[tender25_col],
+            "net": row[net_col],
+            "brands": brands,
+            "desc": row[desc_col],
+        }
+        alt = row[alt_col] if alt_col is not None else None
+        if alt not in (None, ""):
+            entry["alt"] = str(alt).strip()
+        impa = row[impa_col]
         if impa in (None, ""):
             nocode += 1
             entry["no_code"] = True
-            data[f"NOCODE_{nocode}"] = entry
+            raw[f"NOCODE_{nocode}"] = entry
         else:
-            data[str(impa).strip()] = entry
+            raw[str(impa).strip()] = entry
     wb.close()
+    # resolve ALT references: a row whose ALT points to another IMPA quotes that IMPA instead
+    for impa, entry in raw.items():
+        alt = entry.get("alt")
+        if alt and alt in raw:
+            data[impa] = raw[alt]
+        else:
+            data[impa] = entry
     return data
 
 def pick_price(e):
