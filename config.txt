@@ -14,7 +14,7 @@ reports_dir = reports
 db = tracking.db
 
 # Scheduler: how often to check the inbox (minutes)
-check_interval_minutes = 15
+check_interval_minutes = 10
 
 # The RFQ sender email address to watch for in the inbox.
 # Set this to the address your RFQ emails come from.
