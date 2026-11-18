@@ -25,3 +25,7 @@ sheet_name = YourSheetName
 
 # Portal domain (the portal's host, e.g. customer.epbrowser.com).
 portal_domain = customer.epbrowser.com
+
+# IMPA mismatch check: "basic" (flag only clearly-unrelated codes + voltage mismatch),
+# "strict" (also flag weak <4-keyword matches), or "off".
+impa_check = basic

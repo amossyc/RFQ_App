@@ -21,6 +21,7 @@ _defaults = {
     "sender_email": "",
     "sheet_name": "",
     "portal_domain": "",
+    "impa_check": "basic",
 }
 
 _PATH_KEYS = {"pricelist_dir", "working_dir", "browser_profile", "reports_dir", "db"}
@@ -58,3 +59,8 @@ CHECK_INTERVAL_MINUTES = int(_cfg.get("check_interval_minutes", "15"))
 SENDER_EMAIL = _cfg.get("sender_email", "")
 SHEET_NAME = _cfg.get("sheet_name", "")
 PORTAL_DOMAIN = _cfg.get("portal_domain", "")
+
+# "basic" = flag only clearly-unrelated codes (zero overlap) + voltage mismatch
+# "strict" = also flag weak matches (<4 shared keywords)
+# "off" = never flag
+IMPA_CHECK = _cfg.get("impa_check", "basic").lower()
