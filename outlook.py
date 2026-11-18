@@ -25,8 +25,8 @@ def reply_done(msg, body=""):
     reply.Send()
     return True
 
-PROCESSED_FOLDER = "RFQ Processed"
-FAILED_FOLDER = "RFQ Failed"
+PROCESSED_FOLDER = "SINWA RFQ Processed"
+FAILED_FOLDER = "SINWA RFQ Failed"
 
 def _get_subfolder(name):
     inbox = get_inbox()
