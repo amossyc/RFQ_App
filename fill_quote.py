@@ -169,14 +169,19 @@ def _meaningful_tokens(text):
     core = re.sub(r'"[^"]*"', " ", core)
     # normalize "NO.2" / "NO 2" -> "NO2" (Phillips / size number)
     core = re.sub(r"NO\.\s*(\d)", r"NO\1", core, flags=re.IGNORECASE)
+    # protect inch fractions "3/8" so the slash survives as part of the token
+    core = re.sub(r"(\d+)\s*/\s*(\d+)", r"\1FRACSLASH\2", core)
     core = re.sub(r"[^A-Za-z0-9. ]", " ", core).upper()
+    core = core.replace("FRACSLASH", "/")
     out = []
     for t in core.split():
         t = t.strip(".")
         if len(t) < 3:
             continue
-        if any(c.isdigit() for c in t) and "MM" not in t and not re.match(r"NO\d+$", t):
-            continue
+        if t.isdigit():
+            continue  # skip pure numbers (quantities / model numbers like 22)
+        if re.match(r"\d+V$", t):
+            continue  # skip voltages (handled separately by _voltage)
         if t in GENERIC_WORDS:
             continue
         out.append(SYNONYMS.get(t, t))
