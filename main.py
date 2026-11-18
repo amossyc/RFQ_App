@@ -84,7 +84,7 @@ def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_fil
         return
     print("Pricelist:", prclist)
 
-    emails = outlook.get_rfq_emails()
+    emails = outlook.get_rfq_emails(include_processed=bool(force_filters))
     if force_filters:
         emails = [e for e in emails if any(f in (e["subject"] or "").upper() for f in force_filters)]
     if tq_filters:
@@ -125,12 +125,14 @@ def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_fil
             save_processed(processed)
             status = "replied with summary" if send_reply else "no reply sent"
             print(f"  COMPLETE ({status}, logged {len(lines)} lines)")
+            outlook.move_to_processed(e["msg"])
         except portal.ImportFailed as ex:
             print("  IMPORT FAILED:", ex)
             if send_reply:
                 outlook.reply_done(e["msg"], "Import failed")
             processed.add(key)
             save_processed(processed)
+            outlook.move_to_processed(e["msg"])
         except Exception as ex:
             print("  ERROR:", ex)
         done += 1

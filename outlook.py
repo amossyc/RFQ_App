@@ -25,9 +25,25 @@ def reply_done(msg, body=""):
     reply.Send()
     return True
 
-def get_rfq_emails(unread_only=False):
+PROCESSED_FOLDER = "RFQ Processed"
+
+def get_processed_folder():
     inbox = get_inbox()
-    items = inbox.Items
+    try:
+        return inbox.Folders[PROCESSED_FOLDER]
+    except Exception:
+        return inbox.Folders.Add(PROCESSED_FOLDER)
+
+def move_to_processed(msg):
+    """Move a finished RFQ email out of the Inbox into the processed folder."""
+    try:
+        msg.Move(get_processed_folder())
+        return True
+    except Exception:
+        return False
+
+def _scan_folder(folder, unread_only=False):
+    items = folder.Items
     try:
         items = items.Restrict("[MessageClass]='IPM.Note'")
     except Exception:
@@ -39,9 +55,6 @@ def get_rfq_emails(unread_only=False):
     result = []
     for msg in items:
         try:
-            sender = (msg.SenderEmailAddress or "").lower()
-            if RFQ_SENDER not in sender:
-                continue
             link = extract_entry_link(msg.Body) or extract_entry_link(msg.HTMLBody)
             if not link:
                 continue
@@ -55,6 +68,15 @@ def get_rfq_emails(unread_only=False):
             })
         except Exception:
             continue
+    return result
+
+def get_rfq_emails(unread_only=False, include_processed=False):
+    result = _scan_folder(get_inbox(), unread_only)
+    if include_processed:
+        try:
+            result.extend(_scan_folder(get_processed_folder(), unread_only))
+        except Exception:
+            pass
     return result
 
 def scan(n=50):
