@@ -18,10 +18,12 @@ def extract_entry_link(text):
     m = RFQ_ENTRY_RE.search(text or "")
     return m.group(0) if m else None
 
-def reply_done(msg, body=""):
+def reply_done(msg, body="", attachment=None):
     reply = msg.ReplyAll()  # reply to sender + all other recipients/CC
     original = reply.Body  # quoted original message from the sender
     reply.Body = (body + "\n\n" + original) if body else original
+    if attachment:
+        reply.Attachments.Add(attachment)
     reply.Send()
     return True
 
