@@ -439,11 +439,11 @@ def fill_quote(input_path, pricelist_path, output_path):
             codes = extract_impa_codes(name)
             for code in codes:
                 if code in data:
-                    ws.cell(row=r, column=5).value = code
+                    ws.cell(row=r, column=12).value = code  # column L: parsed IMPA
                     impa = code
                     break
             if impa == "" and codes:
-                ws.cell(row=r, column=5).value = codes[0]
+                ws.cell(row=r, column=12).value = codes[0]  # column L: parsed IMPA
                 impa = codes[0]
         entry = data.get(impa)
         if entry is not None:
@@ -479,7 +479,7 @@ def fill_quote(input_path, pricelist_path, output_path):
                     entry = data.get(matched)
                     auto.append((line_ref, "(no IMPA code)", name[:45]))
                 else:
-                    ws.cell(row=r, column=5).value = matched
+                    ws.cell(row=r, column=12).value = matched  # column L: matched IMPA
                     impa = matched
                     entry = data.get(matched)
                     auto.append((line_ref, matched, name[:45]))
