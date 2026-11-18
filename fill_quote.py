@@ -165,18 +165,24 @@ SYNONYMS = {
 
 def _meaningful_tokens(text):
     core = re.split(r"\s*\|\s*(?:IMPA|SSM|Ref\.)|Tender\s+Category|Vessel\s+Notes|Maker\s*:|Truncated", text or "", maxsplit=1, flags=re.IGNORECASE)[0]
+    # remove the inch symbol " (it follows a digit, e.g. 1/2") so it isn't confused with brand quotes
+    core = re.sub(r'(\d)"', r'\1 ', core)
     # strip quoted brand names (e.g. "BAHCO") — metadata, not a descriptive keyword
     core = re.sub(r'"[^"]*"', " ", core)
     # strip #model numbers / #grit prefixes (e.g. #GBM500RE, #00) but keep "/"-suffix series
     core = re.sub(r"#[^/\s]*", " ", core)
     # strip "CAP.xxx" capacity specs (e.g. CAP.27MM) — secondary spec, not a descriptive keyword
     core = re.sub(r"CAP\.\s*\S*", " ", core, flags=re.IGNORECASE)
+    # stainless steel grades (SUS201/SUS304/...) -> STAINLESS
+    core = re.sub(r"\bSUS\d+\b", "STAINLESS", core)
     # normalize "NO.2" / "NO 2" -> "NO2" (Phillips / size number)
     core = re.sub(r"NO\.\s*(\d)", r"NO\1", core, flags=re.IGNORECASE)
     # normalize "AC220V" -> "220V" so voltages match regardless of AC/DC prefix
     core = re.sub(r"\bAC\s*(\d+V)\b", r"\1", core, flags=re.IGNORECASE)
     # protect inch fractions "3/8" so the slash survives as part of the token
     core = re.sub(r"(\d+)\s*/\s*(\d+)", r"\1FRACSLASH\2", core)
+    # split "X" concatenations like 16MMX30MTR / DRIVEX24MM into separate tokens
+    core = re.sub(r"([A-Za-z])X(\d)", r"\1 X \2", core)
     core = re.sub(r"[^A-Za-z0-9. ]", " ", core).upper()
     core = core.replace("FRACSLASH", "/")
     out = []
