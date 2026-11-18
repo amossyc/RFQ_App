@@ -243,7 +243,7 @@ def match_by_description(name, data):
             return m[0]
     feats = _priority_features(name)
     volts = _voltage(name)
-    tokens = _meaningful_tokens(name)
+    tokens = set(_meaningful_tokens(name))
     sizes = _size_tokens(name)
     scored = []
     for impa, e in data.items():
@@ -253,7 +253,7 @@ def match_by_description(name, data):
         if volts and not (volts & _voltage(desc)):
             continue  # customer specified a voltage; item must match it
         dtokens = set(_meaningful_tokens(desc))
-        overlap = sum(1 for t in tokens if t in dtokens)
+        overlap = len(tokens & dtokens)  # distinct shared keywords
         size_overlap = len(sizes & _size_tokens(desc)) if sizes else 0
         if overlap + (1 if size_overlap else 0) < 3:
             continue  # need enough evidence: shared type words + a size match
