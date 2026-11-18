@@ -169,6 +169,8 @@ def _meaningful_tokens(text):
     core = re.sub(r'"[^"]*"', " ", core)
     # strip #model numbers / #grit prefixes (e.g. #GBM500RE, #00) but keep "/"-suffix series
     core = re.sub(r"#[^/\s]*", " ", core)
+    # strip "CAP.xxx" capacity specs (e.g. CAP.27MM) — secondary spec, not a descriptive keyword
+    core = re.sub(r"CAP\.\s*\S*", " ", core, flags=re.IGNORECASE)
     # normalize "NO.2" / "NO 2" -> "NO2" (Phillips / size number)
     core = re.sub(r"NO\.\s*(\d)", r"NO\1", core, flags=re.IGNORECASE)
     # normalize "AC220V" -> "220V" so voltages match regardless of AC/DC prefix
