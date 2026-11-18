@@ -150,10 +150,10 @@ def brand_in_description(name, brands):
     return None
 
 GENERIC_WORDS = {
-    "ELECTRIC", "ELECTRICAL", "MIN", "MAX", "HIGH", "LOW", "PRESSURE",
+    "ELECTRICAL", "MIN", "MAX", "HIGH", "LOW", "PRESSURE",
     "WITH", "FOR", "THE", "AND", "OF", "IN", "ON", "OR", "A", "AN",
     "SIZE", "TYPE", "MODEL", "GRADE", "STANDARD", "HEAVY", "LIGHT", "DUTY",
-    "PNEUMATIC", "HYDRAULIC", "AUTOMATIC", "MANUAL", "POWER", "INDUSTRIAL",
+    "INDUSTRIAL",
     "DIA", "HEAD", "BODY",
     "SPLIETHOFF", "GROUP", "CATALOG", "REF",
 }
@@ -167,8 +167,12 @@ def _meaningful_tokens(text):
     core = re.split(r"\s*\|\s*(?:IMPA|SSM|Ref\.)|Tender\s+Category|Vessel\s+Notes|Maker\s*:|Truncated", text or "", maxsplit=1, flags=re.IGNORECASE)[0]
     # strip quoted brand names (e.g. "BAHCO") — metadata, not a descriptive keyword
     core = re.sub(r'"[^"]*"', " ", core)
+    # strip #model numbers / #grit prefixes (e.g. #GBM500RE, #00) but keep "/"-suffix series
+    core = re.sub(r"#[^/\s]*", " ", core)
     # normalize "NO.2" / "NO 2" -> "NO2" (Phillips / size number)
     core = re.sub(r"NO\.\s*(\d)", r"NO\1", core, flags=re.IGNORECASE)
+    # normalize "AC220V" -> "220V" so voltages match regardless of AC/DC prefix
+    core = re.sub(r"\bAC\s*(\d+V)\b", r"\1", core, flags=re.IGNORECASE)
     # protect inch fractions "3/8" so the slash survives as part of the token
     core = re.sub(r"(\d+)\s*/\s*(\d+)", r"\1FRACSLASH\2", core)
     core = re.sub(r"[^A-Za-z0-9. ]", " ", core).upper()
@@ -180,8 +184,6 @@ def _meaningful_tokens(text):
             continue
         if t.isdigit():
             continue  # skip pure numbers (quantities / model numbers like 22)
-        if re.match(r"\d+V$", t):
-            continue  # skip voltages (handled separately by _voltage)
         if t in GENERIC_WORDS:
             continue
         out.append(SYNONYMS.get(t, t))
@@ -248,7 +250,7 @@ def match_by_description(name, data):
             return m[0]
     feats = _priority_features(name)
     volts = _voltage(name)
-    tokens = set(_meaningful_tokens(name))
+    tokens = {t for t in _meaningful_tokens(name) if not re.search(r"\d.*MM", t)}
     sizes = _size_tokens(name)
     scored = []
     for impa, e in data.items():
