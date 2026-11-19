@@ -1,6 +1,7 @@
 import time
 import config
 import main
+import outlook
 
 INTERVAL_MINUTES = getattr(config, "CHECK_INTERVAL_MINUTES", 15)
 INTERVAL = INTERVAL_MINUTES * 60
@@ -12,6 +13,12 @@ def main_loop():
         stamp = time.strftime("%Y-%m-%d %H:%M:%S")
         print(f"\n[{stamp}] Checking inbox ...")
         try:
+            saved = outlook.process_pricelist_emails(config.PRICELIST_DIR)
+            for p in saved:
+                print(f"  Saved new pricelist: {p}")
+            saved_no = outlook.process_no_offer_emails(config.PRICELIST_DIR)
+            for p in saved_no:
+                print(f"  Saved no-offer list: {p}")
             main.run()
         except KeyboardInterrupt:
             print("\nStopped by user.")

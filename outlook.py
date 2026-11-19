@@ -1,4 +1,6 @@
 import re
+import os
+import glob
 import sys
 import win32com.client
 import config
@@ -58,6 +60,103 @@ def move_to_processed(msg):
 def move_to_failed(msg):
     """Move an RFQ email that failed import 3 times into the failed folder."""
     return move_to_folder(msg, get_failed_folder())
+
+PRICELIST_FOLDER = "SINWA Pricelist History"
+
+def _scan_for_attachment(match):
+    """Find inbox emails that have an attachment whose filename satisfies match(name)."""
+    inbox = get_inbox()
+    items = inbox.Items
+    try:
+        items = items.Restrict("[MessageClass]='IPM.Note'")
+    except Exception:
+        pass
+    try:
+        items.Sort("[ReceivedTime]", True)
+    except Exception:
+        pass
+    result = []
+    for msg in items:
+        try:
+            if any(match(str(a.FileName)) for a in msg.Attachments):
+                result.append({
+                    "msg": msg,
+                    "subject": msg.Subject,
+                    "entry_id": getattr(msg, "EntryID", None),
+                })
+        except Exception:
+            continue
+    return result
+
+def _is_pricelist_name(name):
+    n = name.lower()
+    return n.endswith(".xlsm") and "sinwa qtn" in n
+
+def _is_no_offer_name(name):
+    n = name.lower()
+    return n.endswith(".xlsx") and ("no_offer" in n or "no offer" in n or "nooffer" in n)
+
+def get_pricelist_emails():
+    """Inbox emails carrying a pricelist (.xlsm with 'sinwa qtn' in the name)."""
+    return _scan_for_attachment(_is_pricelist_name)
+
+def get_no_offer_emails():
+    """Inbox emails carrying the no-offer list (.xlsx with 'no offer' in the name)."""
+    return _scan_for_attachment(_is_no_offer_name)
+
+def save_pricelist_attachment(msg, dest_dir):
+    """Save the pricelist .xlsm attachment into dest_dir; remove old pricelists first."""
+    for att in msg.Attachments:
+        name = str(att.FileName)
+        if _is_pricelist_name(name):
+            # old pricelist not kept: remove any existing 'sinwa qtn' .xlsm files
+            for old in glob.glob(os.path.join(dest_dir, "*.xlsm")):
+                b = os.path.basename(old)
+                if "sinwa qtn" in b.lower() and not b.startswith("~$"):
+                    try:
+                        os.remove(old)
+                    except Exception:
+                        pass
+            path = os.path.join(dest_dir, name)
+            att.SaveAsFile(path)
+            return path
+    return None
+
+def save_no_offer_attachment(msg, dest_dir):
+    """Save the no-offer .xlsx attachment as no_offer.xlsx into dest_dir (overwrite)."""
+    for att in msg.Attachments:
+        name = str(att.FileName)
+        if _is_no_offer_name(name):
+            path = os.path.join(dest_dir, "no_offer.xlsx")
+            att.SaveAsFile(path)
+            return path
+    return None
+
+def process_pricelist_emails(dest_dir):
+    """Save pricelist attachments into dest_dir and move those emails to the history folder."""
+    saved = []
+    for e in get_pricelist_emails():
+        try:
+            path = save_pricelist_attachment(e["msg"], dest_dir)
+            if path:
+                saved.append(path)
+                move_to_folder(e["msg"], _get_subfolder(PRICELIST_FOLDER))
+        except Exception as ex:
+            print(f"  pricelist save failed ({e['subject']}): {ex}")
+    return saved
+
+def process_no_offer_emails(dest_dir):
+    """Save the no-offer list into dest_dir and move those emails to the history folder."""
+    saved = []
+    for e in get_no_offer_emails():
+        try:
+            path = save_no_offer_attachment(e["msg"], dest_dir)
+            if path:
+                saved.append(path)
+                move_to_folder(e["msg"], _get_subfolder(PRICELIST_FOLDER))
+        except Exception as ex:
+            print(f"  no_offer save failed ({e['subject']}): {ex}")
+    return saved
 
 def _scan_folder(folder, unread_only=False):
     items = folder.Items
