@@ -78,6 +78,20 @@ def load_pricelist(path):
             data[impa] = entry
     return data
 
+def load_no_offer(path):
+    """Return the set of IMPA codes in the 'do not quote' file (no_offer.xlsx)."""
+    codes = set()
+    if not path or not os.path.exists(path):
+        return codes
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    ws = wb.active
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        v = row[0]
+        if v not in (None, ""):
+            codes.add(str(v).strip())
+    wb.close()
+    return codes
+
 def pick_price(e):
     for k in ("tender25", "tender", "net"):
         n = num(e.get(k))
@@ -415,6 +429,7 @@ def quote_item(entry, name, quality):
 
 def fill_quote(input_path, pricelist_path, output_path):
     data = load_pricelist(pricelist_path)
+    no_offer = load_no_offer(os.path.join(os.path.dirname(os.path.abspath(pricelist_path)), "no_offer.xlsx"))
     wb = openpyxl.load_workbook(input_path)
     ws = wb.active
 
@@ -453,6 +468,11 @@ def fill_quote(input_path, pricelist_path, output_path):
             if impa == "" and codes:
                 ws.cell(row=r, column=12).value = codes[0]  # column L: parsed IMPA
                 impa = codes[0]
+        # do-not-quote list: leave fully blank (no price, no remark, not flagged)
+        if impa in no_offer:
+            ws.cell(row=r, column=9).value = None
+            ws.cell(row=r, column=11).value = None
+            continue
         entry = data.get(impa)
         if entry is not None:
             # sanity check: does the customer's description match this IMPA's pricelist row?
