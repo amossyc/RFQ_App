@@ -4,8 +4,8 @@ import config
 WORK = config.WORK
 PRICELIST_DIR = config.PRICELIST_DIR
 
-GOOD = {"GERMANY", "UK/GERMANY", "BMI GERMANY", "BOSCH", "BAHCO", "PYRAMEX", "PRO-VISE", "IMA ITALY"}
-AVG = {"FAPRO", "STANLEY"}
+GOOD = {"GERMANY", "UK/GERMANY", "BMI GERMANY", "BAHCO", "PYRAMEX", "PRO-VISE", "IMA ITALY"}
+AVG = {"FAPRO", "STANLEY", "TRAMONTINA", "BOSCH", "MAKITA"}
 SPECIAL_KEYS = ("STAINLESS", "S.STEEL", "NON-SPARK", "NONSPARK", "NO-SPARK", "NOSPARK", "NON SPARK")
 
 # 6 digits, with optional spaces or dashes between digit groups: 616623 / 61 66 23 / 61-66-23
@@ -97,7 +97,7 @@ def detect_quality(text):
     t = (text or "").upper()
     if "GOOD" in t:
         return "good"
-    if "AVERAGE" in t or "FAPRO" in t or "IRENO" in t:
+    if "AVG" in t or "AVERAGE" in t or "FAPRO" in t or "IRENO" in t:
         return "avg"
     return None
 
@@ -393,6 +393,10 @@ def quote_item(entry, name, quality):
     if quality == "good":
         for b, p in brands:
             if tier(b) == "good":
+                return (num(p) if num(p) is not None else primary_price), b
+        # no "good" brand -> next best: the avg tier
+        for b, p in brands:
+            if tier(b) == "avg":
                 return (num(p) if num(p) is not None else primary_price), b
         return primary_price, primary
     if quality == "avg":
