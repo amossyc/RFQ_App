@@ -195,6 +195,8 @@ SYNONYMS = {
 
 def _meaningful_tokens(text):
     core = re.split(r"\s*\|\s*(?:IMPA|SSM|Ref\.)|Tender\s+Category|Vessel\s+Notes|Maker\s*:|Truncated", text or "", maxsplit=1, flags=re.IGNORECASE)[0]
+    # remove thousands separators: 1,000V -> 1000V
+    core = re.sub(r"(\d),(\d)", r"\1\2", core)
     # remove the inch symbol " (it follows a digit, e.g. 1/2") so it isn't confused with brand quotes
     core = re.sub(r'(\d)"', r'\1 ', core)
     # strip quoted brand names (e.g. "BAHCO") — metadata, not a descriptive keyword
@@ -252,7 +254,8 @@ def _priority_features(text):
 
 def _voltage(text):
     """Voltage specs like 1000V, 220V, 110V — a hard requirement when the customer specifies one."""
-    return set(re.findall(r"\b\d+V\b", (text or "").upper()))
+    t = re.sub(r"(\d),(\d)", r"\1\2", (text or "").upper())  # 1,000V -> 1000V
+    return set(re.findall(r"\b\d+V\b", t))
 
 def _rank_variant(desc):
     """Tie-break rank for a pricelist description: DEEP > 12-PT > 6-PT > other."""
