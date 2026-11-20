@@ -14,6 +14,10 @@ CODE_RE = re.compile(r"\b\d(?:[\s\-]*\d){5}\b")
 IMPA_RE = re.compile(r"IMPA[\s\-\:\.]*(\d(?:[\s\-]*\d){5})", re.IGNORECASE)
 # "IMPA CODE:B850601" / "IMPA CODE: 850601" (with optional letter prefix)
 IMPA_CODE_RE = re.compile(r"IMPA\s*(?:CODE\s*)?:?\s*[A-Za-z]?(\d(?:[\s\-]*\d){5})", re.IGNORECASE)
+# part numbers like "Part No.:TP02246" (alphanumeric codes, often T-prefixed)
+PARTNO_RE = re.compile(r"\bPart\s*(?:No\.?|Number|#)\s*[:=]?\s*([A-Za-z0-9][A-Za-z0-9\-]*)", re.IGNORECASE)
+# T-prefixed part numbers anywhere: T02250 / TA93278 / TP02246 / TP022465
+TCODE_RE = re.compile(r"\bT[A-Z]?\d{5,6}\b")
 
 def num(v):
     if v is None or v == "":
@@ -149,6 +153,16 @@ def extract_impa_codes(name):
     for m in IMPA_CODE_RE.finditer(name):
         code = re.sub(r"[\s\-]", "", m.group(1))
         if len(code) == 6 and code != "999999" and code not in out:
+            out.append(code)
+    # part numbers: "Part No.:TP02246" / "Part No. TP02246" (spare-part codes)
+    for m in PARTNO_RE.finditer(name):
+        code = m.group(1).strip(".-")
+        if code and code.upper() not in out:
+            out.append(code.upper())
+    # T-prefixed part numbers anywhere (TA93278 / TP02246 / T02250)
+    for m in TCODE_RE.finditer(name):
+        code = m.group(0).upper()
+        if code not in out:
             out.append(code)
     return out
 
