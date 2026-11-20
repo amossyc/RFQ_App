@@ -196,6 +196,35 @@ def get_rfq_emails(unread_only=False, include_processed=False):
                 pass
     return result
 
+def get_email_table_rfqs():
+    """Inbox emails that carry an RFQ table in the body but no portal entry link."""
+    inbox = get_inbox()
+    items = inbox.Items
+    try:
+        items = items.Restrict("[MessageClass]='IPM.Note'")
+    except Exception:
+        pass
+    try:
+        items.Sort("[ReceivedTime]", True)
+    except Exception:
+        pass
+    result = []
+    for msg in items:
+        try:
+            link = extract_entry_link(msg.Body) or extract_entry_link(msg.HTMLBody)
+            if link:
+                continue
+            if "<table" not in (msg.HTMLBody or "").lower():
+                continue
+            result.append({
+                "msg": msg,
+                "subject": msg.Subject,
+                "entry_id": getattr(msg, "EntryID", None),
+            })
+        except Exception:
+            continue
+    return result
+
 def scan(n=50):
     inbox = get_inbox()
     items = inbox.Items

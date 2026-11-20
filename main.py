@@ -6,6 +6,7 @@ import outlook
 import portal
 import fill_quote
 import tracker
+import email_rfq
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 PROCESSED_FILE = os.path.join(APP_DIR, "processed.json")
@@ -86,6 +87,42 @@ def build_summary(rfq_ref, rep):
         for f in other:
             lines.append(f"  - line {f[0]}: {f[2][:40]}")
     return "\n".join(lines)
+
+def run_email_rfqs(send_reply=True):
+    """Process 'email-list' RFQs (a table in the email body, no portal link)."""
+    processed = load_processed()
+    prclist = fill_quote.newest(os.path.join(fill_quote.PRICELIST_DIR, "*.xlsm"))
+    if not prclist:
+        print("No pricelist found in", fill_quote.PRICELIST_DIR)
+        return
+    print("Pricelist:", prclist)
+    emails = outlook.get_email_table_rfqs()
+    print("Found", len(emails), "email-list RFQ email(s).")
+    for e in emails:
+        key = e.get("entry_id") or e["subject"]
+        if key in processed:
+            print("skip (already processed):", e["subject"])
+            continue
+        print("=" * 62)
+        print("Email-list RFQ:", e["subject"])
+        try:
+            ref = extract_ref(e["subject"]) or extract_tq(e["subject"])
+            html = e["msg"].HTMLBody or ""
+            out_path = os.path.join(fill_quote.WORK, f"{ref}-done.xlsx")
+            rep = email_rfq.process_email_rfq(html, out_path, pricelist_path=prclist)
+            if not rep:
+                print("  no table lines found")
+                continue
+            summary = build_summary(ref, rep)
+            if send_reply:
+                outlook.reply_done(e["msg"], summary, out_path)
+            processed.add(key)
+            save_processed(processed)
+            status = "replied" if send_reply else "no reply sent"
+            print(f"  COMPLETE ({status}, {rep.get('total', 0)} lines)")
+            outlook.move_to_processed(e["msg"])
+        except Exception as ex:
+            print(f"  ERROR: {ex}")
 
 def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_filters=None, send_reply=True):
     processed = load_processed()

@@ -19,6 +19,7 @@ def main_loop():
             saved_no = outlook.process_no_offer_emails(config.PRICELIST_DIR)
             for p in saved_no:
                 print(f"  Saved no-offer list: {p}")
+            main.run_email_rfqs()
             main.run()
         except KeyboardInterrupt:
             print("\nStopped by user.")
