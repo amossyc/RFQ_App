@@ -169,7 +169,7 @@ def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_fil
             tracker.log_quote(tracker.DB, extract_tq(e["subject"]), e["subject"], lines)
             summary = build_summary(extract_tq(e["subject"]), rep)
             if send_reply:
-                outlook.reply_done(e["msg"], summary, filled)
+                outlook.reply_done(e["msg"], summary, filled, e["link"])
             processed.add(key)
             save_processed(processed)
             status = "replied with summary" if send_reply else "no reply sent"
@@ -182,7 +182,7 @@ def run(dry_run=False, limit=None, tq_filters=None, skip_filters=None, force_fil
             print(f"  IMPORT FAILED (attempt {attempt}/3):", ex)
             if attempt >= 3:
                 if send_reply:
-                    outlook.reply_done(e["msg"], "Import failed")
+                    outlook.reply_done(e["msg"], "Import failed", None, e["link"])
                 processed.add(key)
                 save_processed(processed)
                 failed.pop(key, None)

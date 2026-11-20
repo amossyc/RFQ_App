@@ -20,10 +20,15 @@ def extract_entry_link(text):
     m = RFQ_ENTRY_RE.search(text or "")
     return m.group(0) if m else None
 
-def reply_done(msg, body="", attachment=None):
+def reply_done(msg, body="", attachment=None, link=None):
     reply = msg.ReplyAll()  # reply to sender + all other recipients/CC
     original = reply.Body  # quoted original message from the sender
-    reply.Body = (body + "\n\n" + original) if body else original
+    parts = []
+    if link:
+        parts.append(link)  # portal link pinned to the very top for easy clicking
+    if body:
+        parts.append(body)
+    reply.Body = "\n\n".join(parts) + (("\n\n" + original) if original else "")
     if attachment:
         reply.Attachments.Add(attachment)
     reply.Send()
