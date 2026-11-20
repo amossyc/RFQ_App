@@ -468,9 +468,9 @@ def fill_quote(input_path, pricelist_path, output_path):
             if impa == "" and codes:
                 ws.cell(row=r, column=12).value = codes[0]  # column L: parsed IMPA
                 impa = codes[0]
-        # do-not-quote list: leave fully blank (no price, no remark, not flagged)
+        # do-not-quote list: price 0, remark blank, not flagged
         if impa in no_offer:
-            ws.cell(row=r, column=9).value = None
+            ws.cell(row=r, column=9).value = 0
             ws.cell(row=r, column=11).value = None
             continue
         entry = data.get(impa)
