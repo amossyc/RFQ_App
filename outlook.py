@@ -202,7 +202,8 @@ def get_rfq_emails(unread_only=False, include_processed=False):
     return result
 
 def get_email_table_rfqs():
-    """Inbox emails that carry an RFQ table in the body but no portal entry link."""
+    """Inbox emails that carry an RFQ table in the body but no portal entry link,
+    and whose sender address ends with pancoship.com."""
     inbox = get_inbox()
     items = inbox.Items
     try:
@@ -216,6 +217,9 @@ def get_email_table_rfqs():
     result = []
     for msg in items:
         try:
+            sender = str(getattr(msg, "SenderEmailAddress", "") or "").lower()
+            if not sender.endswith("pancoship.com"):
+                continue
             link = extract_entry_link(msg.Body) or extract_entry_link(msg.HTMLBody)
             if link:
                 continue
