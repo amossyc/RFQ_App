@@ -14,27 +14,67 @@ def clean_cell(td):
     return re.sub(r"\s+", " ", t).strip()
 
 
+def _field_for(header_text):
+    """Map a header cell text to a field name (handles both table layouts)."""
+    h = (header_text or "").lower().strip("*").strip()
+    if "line no" in h or h == "line":
+        return "line_no"
+    if "line type" in h:
+        return "line_type"
+    if "stk" in h or "stock" in h:
+        return "stk"
+    if "name" in h:
+        return "name"
+    if "qty" in h or "quantity" in h:
+        return "qty"
+    if "uom" in h or "unit" in h:
+        return "uom"
+    return None
+
+
 def parse_email_table(html_body):
-    """Parse an RFQ table from the email HTML body into a list of line dicts."""
+    """Parse an RFQ table from the email HTML body into a list of line dicts.
+
+    Column order is detected from the header row, so both the 6-column
+    (Line No / Line Type / Stk ID / Name / Qty / UOM) and the 5-column
+    (Line No / Stk ID / Qty / UOM / Name) layouts work."""
     rows = re.findall(r"<tr[^>]*>(.*?)</tr>", html_body or "", re.IGNORECASE | re.DOTALL)
-    lines = []
+    parsed = []
     for r in rows:
         cells = re.findall(r"<td[^>]*>(.*?)</td>", r, re.IGNORECASE | re.DOTALL)
-        if len(cells) < 6:
+        parsed.append([clean_cell(c) for c in cells])
+
+    # find the header row and map columns
+    header_map = {}
+    header_idx = None
+    for i, vals in enumerate(parsed):
+        fields = [_field_for(v) for v in vals]
+        if "line_no" in fields and "name" in fields:
+            header_idx = i
+            for j, f in enumerate(fields):
+                if f:
+                    header_map[f] = j
+            break
+    if not header_map:
+        return []
+
+    def get(vals, field):
+        j = header_map.get(field)
+        return vals[j] if j is not None and j < len(vals) else ""
+
+    lines = []
+    for vals in parsed[header_idx + 1:]:
+        line_no = get(vals, "line_no")
+        name = get(vals, "name")
+        if not name or not line_no:
             continue
-        vals = [clean_cell(c) for c in cells]
-        line_no, line_type, stk, name, qty, uom = vals[:6]
-        if not name:
-            continue
-        if line_no.lower().startswith("line"):
-            continue  # header row
         lines.append({
             "line_no": line_no,
-            "line_type": line_type,
-            "stk": stk,
+            "line_type": get(vals, "line_type"),
+            "stk": get(vals, "stk"),
             "name": name,
-            "qty": qty,
-            "uom": uom,
+            "qty": get(vals, "qty"),
+            "uom": get(vals, "uom"),
         })
     return lines
 
