@@ -18,6 +18,8 @@ IMPA_CODE_RE = re.compile(r"IMPA\s*(?:CODE\s*)?:?\s*[A-Za-z]?(\d(?:[\s\-]*\d){5}
 PARTNO_RE = re.compile(r"\bPart\s*(?:No\.?|Number|#)\s*[:=]?\s*([A-Za-z0-9][A-Za-z0-9\-]*)", re.IGNORECASE)
 # T-prefixed part numbers anywhere: T02250 / TA93278 / TP02246 / TP022465
 TCODE_RE = re.compile(r"\bT[A-Z]?\d{5,6}\b")
+# T-prefixed part numbers written with a space, e.g. "TP 02250"
+TSPACED_RE = re.compile(r"\bT[A-Z]?\s+\d{5,6}\b")
 
 def num(v):
     if v is None or v == "":
@@ -164,6 +166,12 @@ def extract_impa_codes(name):
         code = m.group(0).upper()
         if code not in out:
             out.append(code)
+    # T part numbers separated by a space ("TP 02250") — only when "jex" appears in the description
+    if "jex" in name.lower():
+        for m in TSPACED_RE.finditer(name):
+            code = re.sub(r"\s+", "", m.group(0)).upper()
+            if code not in out:
+                out.append(code)
     return out
 
 _PUNCT = ".,;:()[]{}'\"!?<>|/\\"
