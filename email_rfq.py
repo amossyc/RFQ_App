@@ -151,6 +151,62 @@ def build_filled_table(html_body, lines, filled_path, output_path):
     return output_path
 
 
+def _read_filled_values(filled_path):
+    """Read {price, remark, impa} per line from the portal-format filled file."""
+    wb = openpyxl.load_workbook(filled_path, data_only=True)
+    ws = wb.active
+    out = []
+    for r in range(1, ws.max_row + 1):
+        if ws.cell(row=r, column=3).value in (None, ""):
+            continue
+        stk = ws.cell(row=r, column=5).value
+        parsed = ws.cell(row=r, column=12).value
+        impa = stk or parsed
+        out.append({
+            "price": ws.cell(row=r, column=9).value,
+            "remark": ws.cell(row=r, column=11).value,
+            "impa": impa if impa not in (None, "") else None,
+        })
+    wb.close()
+    return out
+
+
+def build_html_table(html_body, filled_values):
+    """Add 3 columns (Price, Description, IMPA) to the customer's ORIGINAL HTML table."""
+    m = re.search(r"<table[^>]*>.*?</table>", html_body, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return None
+    table = m.group(0)
+
+    style = "style='border:solid gray 1.0pt;padding:0cm 5.4pt 0cm 5.4pt'"
+
+    def cell_html(value, bold=False):
+        v = html.escape(str(value)) if value is not None else "&nbsp;"
+        inner = ("<b>%s</b>" % v) if bold else v
+        return "<td nowrap valign=bottom %s>%s</td>" % (style, inner)
+
+    state = {"header": False, "data_i": 0}
+
+    def transform(match):
+        tr = match.group(0)
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", tr, re.IGNORECASE | re.DOTALL)
+        fields = [_field_for(clean_cell(c)) for c in cells]
+        if not state["header"] and "line_no" in fields and "name" in fields:
+            state["header"] = True
+            add = cell_html("Price", True) + cell_html("Description", True) + cell_html("IMPA", True)
+        elif state["header"]:
+            i = state["data_i"]
+            f = filled_values[i] if i < len(filled_values) else {}
+            state["data_i"] += 1
+            add = cell_html(f.get("price")) + cell_html(f.get("remark")) + cell_html(f.get("impa"))
+        else:
+            return tr
+        idx = tr.lower().rfind("</tr>")
+        return tr[:idx] + add + tr[idx:]
+
+    return re.sub(r"<tr[^>]*>.*?</tr>", transform, table, flags=re.IGNORECASE | re.DOTALL)
+
+
 def newest_pricelist():
     files = [f for f in glob.glob(os.path.join(config.PRICELIST_DIR, "*.xlsm"))
              if not os.path.basename(f).startswith("~$")]
@@ -174,8 +230,10 @@ def process_email_rfq(html_body, output_path, pricelist_path=None):
         os.remove(tmp)
     except Exception:
         pass
-    # rebuild output as the customer's original columns + Price + Description + IMPA
+    # read the filled values, then rebuild the output as the customer's table + 3 columns
+    filled_values = _read_filled_values(output_path)
     build_filled_table(html_body, lines, output_path, output_path)
+    rep["html_table"] = build_html_table(html_body, filled_values)
     rep["lines"] = len(lines)
     return rep
 
