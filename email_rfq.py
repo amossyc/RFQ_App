@@ -96,6 +96,44 @@ def build_portal_xlsx(lines, path):
     return path
 
 
+def build_filled_table(lines, filled_path, output_path):
+    """Rebuild the output as: original columns + Price + Description + IMPA."""
+    wb = openpyxl.load_workbook(filled_path, data_only=True)
+    ws = wb.active
+    filled = {}
+    for r in range(1, ws.max_row + 1):
+        if ws.cell(row=r, column=3).value in (None, ""):
+            continue
+        key = str(ws.cell(row=r, column=3).value)
+        filled[key] = {
+            "price": ws.cell(row=r, column=9).value,
+            "remark": ws.cell(row=r, column=11).value,
+            "impa": ws.cell(row=r, column=12).value,
+        }
+    wb.close()
+
+    wb2 = openpyxl.Workbook()
+    ws2 = wb2.active
+    headers = ["Line No", "Stk ID", "Name", "Qty", "UOM", "Price", "Description", "IMPA"]
+    for c, h in enumerate(headers, start=1):
+        ws2.cell(row=1, column=c).value = h
+    for i, ln in enumerate(lines):
+        r = 2 + i
+        f = filled.get(str(i + 1), {})
+        ws2.cell(row=r, column=1).value = ln.get("line_no")
+        ws2.cell(row=r, column=2).value = ln.get("stk") or None
+        ws2.cell(row=r, column=3).value = ln.get("name")
+        ws2.cell(row=r, column=4).value = ln.get("qty")
+        ws2.cell(row=r, column=5).value = ln.get("uom")
+        ws2.cell(row=r, column=6).value = f.get("price")
+        ws2.cell(row=r, column=7).value = f.get("remark")
+        # IMPA = the customer's Stk ID if present, otherwise the app's parsed/matched guess
+        impa = (ln.get("stk") or f.get("impa"))
+        ws2.cell(row=r, column=8).value = impa if impa not in (None, "") else None
+    wb2.save(output_path)
+    return output_path
+
+
 def newest_pricelist():
     files = [f for f in glob.glob(os.path.join(config.PRICELIST_DIR, "*.xlsm"))
              if not os.path.basename(f).startswith("~$")]
@@ -119,6 +157,8 @@ def process_email_rfq(html_body, output_path, pricelist_path=None):
         os.remove(tmp)
     except Exception:
         pass
+    # rebuild output as the original email columns + Price + Description + IMPA
+    build_filled_table(lines, output_path, output_path)
     rep["lines"] = len(lines)
     return rep
 
