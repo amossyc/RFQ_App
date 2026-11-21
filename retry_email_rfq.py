@@ -7,6 +7,7 @@ import win32com.client
 import fill_quote
 import email_rfq
 import main
+import outlook
 
 
 def find_email(subj):
@@ -51,6 +52,7 @@ if __name__ == "__main__":
 
     reply = msg.Reply()          # builds a reply (quoted original), addressed to the sender
     reply.To = to                # override recipient -> send to this address only
+    outlook.strip_image_attachments(reply)  # drop inline signature/logos
     reply.Body = summary + "\n\n" + (reply.Body or "")
     if html_table:
         reply.HTMLBody = "<html><body>" + html_table + "</body></html>"

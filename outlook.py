@@ -20,8 +20,22 @@ def extract_entry_link(text):
     m = RFQ_ENTRY_RE.search(text or "")
     return m.group(0) if m else None
 
+IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tif", ".tiff", ".webp")
+
+def strip_image_attachments(mail):
+    """Remove image attachments (e.g. inline signature images) from a mail item."""
+    for i in range(mail.Attachments.Count, 0, -1):
+        try:
+            att = mail.Attachments.Item(i)
+            name = str(att.FileName or "").lower()
+            if name.endswith(IMAGE_EXTS):
+                att.Delete()
+        except Exception:
+            pass
+
 def reply_done(msg, body="", attachment=None, link=None):
     reply = msg.ReplyAll()  # reply to sender + all other recipients/CC
+    strip_image_attachments(reply)  # drop inline signature/logos so only the xlsx remains
     original = reply.Body  # quoted original message from the sender
     parts = []
     if link:
