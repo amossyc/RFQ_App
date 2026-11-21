@@ -79,6 +79,17 @@ def parse_email_table(html_body):
     return lines
 
 
+def _get_table_header(html_body):
+    """Return (header_cells, field_order) from the email table's header row."""
+    for r in re.findall(r"<tr[^>]*>(.*?)</tr>", html_body or "", re.IGNORECASE | re.DOTALL):
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", r, re.IGNORECASE | re.DOTALL)
+        vals = [clean_cell(c) for c in cells]
+        fields = [_field_for(v) for v in vals]
+        if "line_no" in fields and "name" in fields:
+            return vals, fields
+    return [], []
+
+
 def build_portal_xlsx(lines, path):
     """Build an Excel in the portal-export layout (same columns fill_quote expects)."""
     wb = openpyxl.Workbook()
@@ -96,8 +107,10 @@ def build_portal_xlsx(lines, path):
     return path
 
 
-def build_filled_table(lines, filled_path, output_path):
-    """Rebuild the output as: original columns + Price + Description + IMPA."""
+def build_filled_table(html_body, lines, filled_path, output_path):
+    """Rebuild the output as: the customer's original table columns + Price + Description + IMPA."""
+    from openpyxl.styles import Border, Side, Font
+    # read filled values (price/remark/impa) from the portal-format filled file
     wb = openpyxl.load_workbook(filled_path, data_only=True)
     ws = wb.active
     filled = {}
@@ -112,24 +125,28 @@ def build_filled_table(lines, filled_path, output_path):
         }
     wb.close()
 
+    header_cells, field_order = _get_table_header(html_body)
+
     wb2 = openpyxl.Workbook()
     ws2 = wb2.active
-    headers = ["Line No", "Stk ID", "Name", "Qty", "UOM", "Price", "Description", "IMPA"]
+    headers = list(header_cells) + ["Price", "Description", "IMPA"]
+    thin = Side(style="thin")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
     for c, h in enumerate(headers, start=1):
-        ws2.cell(row=1, column=c).value = h
+        cell = ws2.cell(row=1, column=c, value=h)
+        cell.border = border
+        cell.font = Font(bold=True)
     for i, ln in enumerate(lines):
         r = 2 + i
         f = filled.get(str(i + 1), {})
-        ws2.cell(row=r, column=1).value = ln.get("line_no")
-        ws2.cell(row=r, column=2).value = ln.get("stk") or None
-        ws2.cell(row=r, column=3).value = ln.get("name")
-        ws2.cell(row=r, column=4).value = ln.get("qty")
-        ws2.cell(row=r, column=5).value = ln.get("uom")
-        ws2.cell(row=r, column=6).value = f.get("price")
-        ws2.cell(row=r, column=7).value = f.get("remark")
-        # IMPA = the customer's Stk ID if present, otherwise the app's parsed/matched guess
+        vals = [ln.get(field) if field else "" for field in field_order]
+        vals.append(f.get("price"))
+        vals.append(f.get("remark"))
         impa = (ln.get("stk") or f.get("impa"))
-        ws2.cell(row=r, column=8).value = impa if impa not in (None, "") else None
+        vals.append(impa if impa not in (None, "") else None)
+        for c, v in enumerate(vals, start=1):
+            cell = ws2.cell(row=r, column=c, value=v)
+            cell.border = border
     wb2.save(output_path)
     return output_path
 
@@ -157,8 +174,8 @@ def process_email_rfq(html_body, output_path, pricelist_path=None):
         os.remove(tmp)
     except Exception:
         pass
-    # rebuild output as the original email columns + Price + Description + IMPA
-    build_filled_table(lines, output_path, output_path)
+    # rebuild output as the customer's original columns + Price + Description + IMPA
+    build_filled_table(html_body, lines, output_path, output_path)
     rep["lines"] = len(lines)
     return rep
 
