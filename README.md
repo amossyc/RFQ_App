@@ -73,7 +73,7 @@ Double-click shortcuts (all run from their own folder via `%~dp0`):
 | `2_Start Scheduler.bat` | loop forever, check inbox every N minutes |
 | `3_Process Single RFQ.bat` | prompts for one TRFQ, processes only it (sends reply) |
 | `4_Process Single Link.bat` | prompts for a portal URL (for emails that arrived with no link) |
-| `5_Process Email convert.bat` | prompts for an email-list RFQ, re-quotes it and replies (Reply-All by default) |
+| `5_Process Table Converter.bat` | prompts for an email-list RFQ, re-quotes it and replies (Reply-All by default) |
 | `6_Monthly Report.bat` | generate the monthly outlier report |
 
 ---
