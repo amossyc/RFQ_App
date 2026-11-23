@@ -115,7 +115,7 @@ def run_email_rfqs(send_reply=True):
                 continue
             summary = build_summary(ref, rep)
             if send_reply:
-                outlook.reply_done(e["msg"], summary, out_path)
+                outlook.reply_done(e["msg"], summary, out_path, html_body=rep.get("html_table"))
             processed.add(key)
             save_processed(processed)
             status = "replied" if send_reply else "no reply sent"

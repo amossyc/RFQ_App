@@ -1,6 +1,8 @@
-"""One-off: re-process an email-list RFQ and reply to a specific address (no ReplyAll).
+"""One-off: re-process an email-list RFQ and reply.
 
-Usage: python retry_email_rfq.py <SUBJECT> <TO_ADDRESS>
+Usage:
+  python retry_email_rfq.py <SUBJECT>             -> Reply-All
+  python retry_email_rfq.py <SUBJECT> <TO_ADDRESS> -> reply to that address only
 """
 import sys, os
 import win32com.client
@@ -22,7 +24,7 @@ def find_email(subj):
 
 if __name__ == "__main__":
     subj = sys.argv[1] if len(sys.argv) > 1 else "TQ26174179"
-    to = sys.argv[2] if len(sys.argv) > 2 else "sales4@pancoship.com"
+    to = sys.argv[2] if len(sys.argv) > 2 else None
 
     msg = find_email(subj)
     if not msg:
@@ -50,13 +52,16 @@ if __name__ == "__main__":
             f.write("<html><head><meta charset='utf-8'></head><body>" + html_table + "</body></html>")
         print("HTML table saved:", html_out)
 
-    reply = msg.Reply()          # builds a reply (quoted original), addressed to the sender
-    reply.To = to                # override recipient -> send to this address only
+    if to:
+        reply = msg.Reply()      # reply to sender, then override recipient
+        reply.To = to
+    else:
+        reply = msg.ReplyAll()   # reply-all by default
     outlook.strip_image_attachments(reply)  # drop inline signature/logos
     reply.Body = summary + "\n\n" + (reply.Body or "")
     if html_table:
         reply.HTMLBody = "<html><body>" + html_table + "</body></html>"
     reply.Attachments.Add(out)
     reply.Send()
-    print(f"Replied to {to}")
+    print(f"Replied {'to ' + to if to else 'all'}")
     print(f"Attachment: {out}")

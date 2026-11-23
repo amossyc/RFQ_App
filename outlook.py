@@ -33,7 +33,7 @@ def strip_image_attachments(mail):
         except Exception:
             pass
 
-def reply_done(msg, body="", attachment=None, link=None):
+def reply_done(msg, body="", attachment=None, link=None, html_body=None):
     reply = msg.ReplyAll()  # reply to sender + all other recipients/CC
     strip_image_attachments(reply)  # drop inline signature/logos so only the xlsx remains
     original = reply.Body  # quoted original message from the sender
@@ -43,6 +43,8 @@ def reply_done(msg, body="", attachment=None, link=None):
     if body:
         parts.append(body)
     reply.Body = "\n\n".join(parts) + (("\n\n" + original) if original else "")
+    if html_body:
+        reply.HTMLBody = "<html><body>" + html_body + "</body></html>"
     if attachment:
         reply.Attachments.Add(attachment)
     reply.Send()
