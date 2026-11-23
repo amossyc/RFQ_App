@@ -24,13 +24,31 @@ Microsoft Outlook (via `pywin32`) and Microsoft Edge (via Playwright).
 4. The filled file is saved as `<TRFQ>-done.xlsx` and the empty export is deleted.
 5. `outlook.reply_done()` replies (Reply-All) with a short summary (quoted/flagged/
    auto-matched counts + details), keeping the original message body, and attaches the
-   filled `<TRFQ>-done.xlsx`.
+   filled `<TRFQ>-done.xlsx`. The portal link is pinned to the very top of the reply, and
+   inline image attachments are stripped so only the `.xlsx` remains.
 6. `tracker.log_quote()` records every filled line in SQLite (`tracking.db`).
 7. The email is moved to the `SINWA RFQ Processed` folder, and its `EntryID` is added to
    `processed.json` so it is not processed again.
 
 The app is idempotent: re-running only processes *new* emails. `--force <TRFQ>` re-runs a
 specific RFQ regardless.
+
+### Email-list (table) RFQ (no portal link)
+
+Some RFQs arrive as a plain HTML **table** in the email body (no portal link). The app
+handles those too, via `email_rfq.py`:
+
+1. The scheduler detects inbox emails with no entry link that contain a `<table>` and whose
+   sender address ends in `pancoship.com`.
+2. `email_rfq.parse_email_table()` reads the table (column order auto-detected from the
+   header row), then runs the same `fill_quote` logic to quote every line.
+3. The reply (Reply-All) contains the **customer's original table with three added columns** —
+   `Price`, `Description`, `IMPA` — inline in the body, plus a `-done.xlsx`. The `IMPA`
+   column is the customer's Stk ID when present, otherwise the app's parsed/auto-matched
+   guess.
+
+Use `5_Process Table Converter.bat` (or `python retry_email_rfq.py <TQ>`) to re-run one
+email-list RFQ on demand.
 
 ---
 
@@ -56,7 +74,7 @@ First run:
    link, not the sender.)
 3. Run `python main.py --dry-run` to verify it can find emails and the pricelist without
    touching anything.
-4. Run `python main.py` (or double-click `1_Process Inbox.bat`) to process for real.
+4. Run `python main.py` (or double-click `2_Process Inbox.bat`) to process for real.
 5. The first portal login happens in the persistent browser profile
    (`browser_profile/`); after that it stays logged in.
 
@@ -85,11 +103,15 @@ Double-click shortcuts (all run from their own folder via `%~dp0`):
 | `main.py` | Orchestrator / CLI. Email loop, reply, logging, idempotency. |
 | `portal.py` | Playwright browser automation (export / import / process_rfq). |
 | `fill_quote.py` | **The core business logic.** Pricelist parsing, description matching, quote building. |
+| `email_rfq.py` | Email-list (table) RFQ parser + converter (no portal link). |
 | `tracker.py` | SQLite storage + monthly Excel outlier report. |
-| `outlook.py` | Outlook COM: inbox scan, link extraction, reply. |
+| `outlook.py` | Outlook COM: inbox scan, link extraction, reply, pricelist/no-offer pickup. |
 | `config.py` | Reads `config.txt` (paths + settings). |
-| `scheduler.py` | Infinite loop: checks for pricelist/no-offer emails, then runs `main.run()` every N minutes. |
+| `scheduler.py` | Infinite loop: picks up pricelist/no-offer emails, processes email-list RFQs, then runs `main.run()` every N minutes. |
 | `import_latest.py` | Small helper: re-import the newest `*-done.xlsx` into the portal. |
+| `retry_email_rfq.py` | Re-run one email-list RFQ and reply (Reply-All by default). |
+| `add_impa_rows.py` | Fill a range of missing IMPA codes with Net price 0. |
+| `migrate_no_offer.py` | Move net-0 placeholder rows from the pricelist into `no_offer.xlsx`. |
 
 CLI (`python main.py`):
 
@@ -243,6 +265,11 @@ Tokenizer normalisations (`_meaningful_tokens` / `_size_tokens`):
 - The text is split at `| IMPA / | SSM / | Ref.` and at the metadata markers
   `Tender Category`, `Vessel Notes`, `Maker :` to drop catalog/metadata noise.
 
+**Code extraction** (`extract_impa_codes`) finds the item code in a description:
+6-digit numeric IMPA (with optional spaces/dashes), `IMPA…` / `IMPA CODE:…` labels,
+`Part No.:TP02246` part numbers, standalone T part numbers (`TA93278`, `TP02246`, `T02250`,
+`TP022465`), and spaced T part numbers (`TP 02250`) when `jex` appears in the description.
+
 ---
 
 ## 8. IMPA mismatch sanity check
@@ -278,10 +305,10 @@ price, remark. The monthly report (`python tracker.py report`) writes an Excel f
 ## 10. Scheduler
 
 `scheduler.py` loops forever: each cycle it (1) checks the inbox for pricelist / no-offer
-emails and saves their attachments into `pricelist/`, (2) runs `main.run()` (process new
-RFQ emails, send replies), then sleeps `check_interval_minutes` minutes and repeats. It
-only stops on Ctrl+C (or closing the window). Errors are caught and logged so a transient
-failure doesn't stop the loop.
+emails and saves their attachments into `pricelist/`, (2) processes email-list (table) RFQs,
+(3) runs `main.run()` (portal RFQs), then sleeps `check_interval_minutes` minutes and
+repeats. It only stops on Ctrl+C (or closing the window). Errors are caught and logged so a
+transient failure doesn't stop the loop.
 
 - Pricelist email: `.xlsm` attachment with `sinwa qtn` in the filename → saved into
   `pricelist/` (any existing `sinwa qtn` `.xlsm` files are removed first) and the email
@@ -303,7 +330,10 @@ processed check (so it re-runs even if already done).
 
 - **`999999`** is the customer's placeholder for "no IMPA code" — never treat it as a real code.
 - `no_offer.xlsx` (IMPA codes to never quote) is a blacklist: any line resolving to one of
-  those codes is left **fully blank** (no price, no remark) and not flagged.
+  those codes is written with **price 0** and a blank remark, and not flagged.
+- T-prefixed part numbers (`TA93278`, `TP02246`, …) live in the pricelist's IMPA column and
+  are extracted from descriptions (`Part No.:`, standalone, or `TP 02250` when `jex` is
+  present).
 - The customer **never buys** the non-pricelist items; flagging them is correct (do not add them
   to the pricelist automatically).
 - "2025 tender price first, otherwise tender price, otherwise net price" is the price order.
@@ -339,6 +369,6 @@ processed check (so it re-runs even if already done).
 - The portal is reached via the configured `portal_domain` (in `config.txt`); Export/Import are text elements (`Export`,
   `Import`); Import opens a hidden `<input type=file>` (Playwright `expect_file_chooser`).
 - The pricelist changes frequently (daily/hourly); the app re-reads the `.xlsm` fresh on
-  every run. Maintenance helper scripts live in the dev workspace: `add_impa_rows.py`
-  (fill a range of missing IMPA codes with Net price 0) and `migrate_no_offer.py` (move
-  net-0 placeholder rows from the pricelist into `no_offer.xlsx`).
+  every run. Maintenance helpers (included): `add_impa_rows.py` (fill a range of missing
+  IMPA codes with Net price 0) and `migrate_no_offer.py` (move net-0 placeholder rows from
+  the pricelist into `no_offer.xlsx`).
