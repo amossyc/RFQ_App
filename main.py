@@ -17,12 +17,24 @@ def extract_tq(subject):
     return m.group(0) if m else (subject or "")
 
 def extract_ref(subject):
-    """Return the RFQ reference (TRFQ preferred, else TQ) for naming output files."""
+    """Return the RFQ reference (TRFQ preferred, else TQ, else number-XXX) for filenames."""
     m = re.search(r"TRFQ\d+", subject or "")
     if m:
         return m.group(0)
     m = re.search(r"TQ\d+", subject or "")
-    return m.group(0) if m else None
+    if m:
+        return m.group(0)
+    # e.g. "RFQ - 8440-ES265014A" -> "8440-ES265014A"
+    m = re.search(r"\d+\s*[-_]\s*[A-Za-z]{1,3}\d+[A-Za-z]?", subject or "")
+    if m:
+        return m.group(0).replace(" ", "")
+    return None
+
+def _safe_filename(s):
+    """Remove characters that are invalid in Windows filenames."""
+    s = re.sub(r'[<>:"/\\|?*]', '-', s or "")
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
 
 def load_processed():
     if os.path.exists(PROCESSED_FILE):
@@ -106,7 +118,7 @@ def run_email_rfqs(send_reply=True):
         print("=" * 62)
         print("Email-list RFQ:", e["subject"])
         try:
-            ref = extract_ref(e["subject"]) or extract_tq(e["subject"])
+            ref = extract_ref(e["subject"]) or _safe_filename(extract_tq(e["subject"]))
             html = e["msg"].HTMLBody or ""
             out_path = os.path.join(fill_quote.WORK, f"{ref}-done.xlsx")
             rep = email_rfq.process_email_rfq(html, out_path, pricelist_path=prclist)

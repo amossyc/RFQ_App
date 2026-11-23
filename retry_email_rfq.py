@@ -34,7 +34,7 @@ if __name__ == "__main__":
     html = msg.HTMLBody or ""
     # use the production pricelist folder (the workspace config.txt points at Downloads for testing)
     pl = fill_quote.newest(r"C:\RFQ_App\pricelist\*.xlsm")
-    ref = main.extract_ref(msg.Subject) or main.extract_tq(msg.Subject)
+    ref = main.extract_ref(msg.Subject) or main._safe_filename(main.extract_tq(msg.Subject))
     out = os.path.join(r"C:\RFQ_App\working", f"{ref}-done.xlsx")
 
     rep = email_rfq.process_email_rfq(html, out, pricelist_path=pl)
