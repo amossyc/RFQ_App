@@ -19,7 +19,7 @@ Microsoft Outlook (via `pywin32`) and Microsoft Edge (via Playwright).
    clicks **Import** to upload the filled file. It never clicks **Submit** — a human
    reviews and submits on the portal. If **Import** fails (button not clickable within
    10 seconds), the email is retried on later runs, up to **3 attempts**; after the 3rd
-   failure it is moved to the `SINWA RFQ Failed` folder and replied to with `Import failed`.
+   failure it is moved to the `RFQ Failed` folder and replied to with `Import failed`.
 3. `fill_quote.py` fills each line's List Price and Remarks from the pricelist.
 4. The filled file is saved as `<TRFQ>-done.xlsx` and the empty export is deleted.
 5. `outlook.reply_done()` replies (Reply-All) with a short summary (quoted/flagged/
@@ -27,7 +27,7 @@ Microsoft Outlook (via `pywin32`) and Microsoft Edge (via Playwright).
    filled `<TRFQ>-done.xlsx`. The portal link is pinned to the very top of the reply, and
    inline image attachments are stripped so only the `.xlsx` remains.
 6. `tracker.log_quote()` records every filled line in SQLite (`tracking.db`).
-7. The email is moved to the `SINWA RFQ Processed` folder, and its `EntryID` is added to
+7. The email is moved to the `RFQ Processed` folder, and its `EntryID` is added to
    `processed.json` so it is not processed again.
 
 The app is idempotent: re-running only processes *new* emails. `--force <TRFQ>` re-runs a
@@ -79,9 +79,9 @@ First run:
    (`browser_profile/`); after that it stays logged in.
 
 Pricelist / no-offer updates can also arrive by email: each scheduler cycle checks the
-inbox for a `.xlsm` attachment whose name contains `sinwa qtn` (pricelist) or a `.xlsx`
+inbox for a `.xlsm` attachment whose name contains `qtn` (pricelist) or a `.xlsx`
 attachment whose name contains `no offer` (no-offer list), saves it into `pricelist/`, and
-moves the email to the `SINWA Pricelist History` folder.
+moves the email to the `Pricelist History` folder.
 
 Double-click shortcuts (all run from their own folder via `%~dp0`):
 
@@ -141,8 +141,8 @@ the app folder if relative.
 | `db` | SQLite path (`tracking.db`) |
 | `check_interval_minutes` | scheduler interval |
 | `sender_email` | legacy/reference (RFQ emails are identified by entry link) |
-| `sheet_name` | pricelist worksheet name (e.g. `SINWA`) |
-| `portal_domain` | portal host (e.g. `sinwa.epbrowser.com`) |
+| `sheet_name` | pricelist worksheet name (e.g. `YourSheetName`) |
+| `portal_domain` | portal host (e.g. `customer.epbrowser.com`) |
 | `impa_check` | `basic` (default) / `strict` / `off` — see §8 |
 
 `config.py` exposes `PRICELIST_DIR`, `WORK` (alias), `PROFILE` (alias), `REPORTS_DIR`,
@@ -310,11 +310,11 @@ emails and saves their attachments into `pricelist/`, (2) processes email-list (
 repeats. It only stops on Ctrl+C (or closing the window). Errors are caught and logged so a
 transient failure doesn't stop the loop.
 
-- Pricelist email: `.xlsm` attachment with `sinwa qtn` in the filename → saved into
-  `pricelist/` (any existing `sinwa qtn` `.xlsm` files are removed first) and the email
-  moved to `SINWA Pricelist History`.
+- Pricelist email: `.xlsm` attachment with `qtn` in the filename → saved into
+  `pricelist/` (any existing `qtn` `.xlsm` files are removed first) and the email
+  moved to `Pricelist History`.
 - No-offer email: `.xlsx` attachment with `no offer` in the filename → saved as
-  `no_offer.xlsx` and the email moved to the same `SINWA Pricelist History` folder.
+  `no_offer.xlsx` and the email moved to the same `Pricelist History` folder.
 
 ---
 
