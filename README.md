@@ -69,8 +69,8 @@ Double-click shortcuts (all run from their own folder via `%~dp0`):
 
 | File | What it does |
 |---|---|
-| `1_Process Inbox.bat` | process all new emails (sends replies) |
-| `2_Start Scheduler.bat` | loop forever, check inbox every N minutes |
+| `1_Start Scheduler.bat` | loop forever, check inbox every N minutes |
+| `2_Process Inbox.bat` | process all new emails (sends replies) |
 | `3_Process Single RFQ.bat` | prompts for one TRFQ, processes only it (sends reply) |
 | `4_Process Single Link.bat` | prompts for a portal URL (for emails that arrived with no link) |
 | `5_Process Table Converter.bat` | prompts for an email-list RFQ, re-quotes it and replies (Reply-All by default) |
