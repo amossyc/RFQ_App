@@ -15,9 +15,9 @@ def clean_cell(td):
 
 
 def _field_for(header_text):
-    """Map a header cell text to a field name (handles both table layouts)."""
+    """Map a header cell text to a field name (handles all table layouts)."""
     h = (header_text or "").lower().strip("*").strip()
-    if "line no" in h or h == "line":
+    if "line no" in h or h in ("line", "no", "no.", "s/no", "s.no", "sn", "item", "item no"):
         return "line_no"
     if "line type" in h:
         return "line_type"
