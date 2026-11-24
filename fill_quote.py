@@ -292,6 +292,7 @@ def _priority_features(text):
 def _voltage(text):
     """Voltage specs like 1000V, 220V, 110V — a hard requirement when the customer specifies one."""
     t = re.sub(r"(\d),(\d)", r"\1\2", (text or "").upper())  # 1,000V -> 1000V
+    t = re.sub(r"(\d+)\s*/\s*(\d+V)\b", r"\1V \2", t)        # 220/240V -> 220V 240V
     t = re.sub(r"\bAC\s*(\d+V)\b", r"\1", t)  # AC220V / AC 220V -> 220V
     return set(re.findall(r"\b\d+V\b", t))
 
