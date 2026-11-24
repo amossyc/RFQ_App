@@ -289,12 +289,21 @@ def _priority_features(text):
     c = _compact(text)
     return [f for f in PRIORITY_FEATURES if f in c]
 
+def _normalize_voltage(v):
+    """Group close voltages: 200-240V -> 220V, 100-110V -> 110V."""
+    n = int(re.sub(r"\D", "", v))
+    if 200 <= n <= 240:
+        return "220V"
+    if 100 <= n <= 110:
+        return "110V"
+    return v
+
 def _voltage(text):
     """Voltage specs like 1000V, 220V, 110V — a hard requirement when the customer specifies one."""
     t = re.sub(r"(\d),(\d)", r"\1\2", (text or "").upper())  # 1,000V -> 1000V
     t = re.sub(r"(\d+)\s*/\s*(\d+V)\b", r"\1V \2", t)        # 220/240V -> 220V 240V
     t = re.sub(r"\bAC\s*(\d+V)\b", r"\1", t)  # AC220V / AC 220V -> 220V
-    return set(re.findall(r"\b\d+V\b", t))
+    return {_normalize_voltage(v) for v in re.findall(r"\b\d+V\b", t)}
 
 def _rank_variant(desc):
     """Tie-break rank for a pricelist description: DEEP > 12-PT > 6-PT > other."""
