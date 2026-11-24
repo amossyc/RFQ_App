@@ -59,8 +59,6 @@ if __name__ == "__main__":
         reply = msg.ReplyAll()   # reply-all by default
     outlook.strip_image_attachments(reply)  # drop inline signature/logos
     reply.Body = summary + "\n\n" + (reply.Body or "")
-    if html_table:
-        reply.HTMLBody = "<html><body>" + html_table + "</body></html>"
     reply.Attachments.Add(out)
     reply.Send()
     print(f"Replied {'to ' + to if to else 'all'}")
