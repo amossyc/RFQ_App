@@ -44,7 +44,16 @@ def reply_done(msg, body="", attachment=None, link=None, html_body=None):
         parts.append(body)
     reply.Body = "\n\n".join(parts) + (("\n\n" + original) if original else "")
     if html_body:
-        reply.HTMLBody = "<html><body>" + html_body + "</body></html>"
+        orig_html = reply.HTMLBody or ""
+        if "<body" in orig_html.lower():
+            # prepend the completed table, keep the customer's original message below it
+            reply.HTMLBody = re.sub(
+                r"(<body[^>]*>)",
+                r"\1" + html_body + "<br><br><hr><br>",
+                orig_html, count=1, flags=re.IGNORECASE,
+            )
+        else:
+            reply.HTMLBody = "<html><body>" + html_body + "<br><br>" + orig_html + "</body></html>"
     if attachment:
         reply.Attachments.Add(attachment)
     reply.Send()
