@@ -36,25 +36,29 @@ def strip_image_attachments(mail):
 def reply_done(msg, body="", attachment=None, link=None, html_body=None):
     reply = msg.ReplyAll()  # reply to sender + all other recipients/CC
     strip_image_attachments(reply)  # drop inline signature/logos so only the xlsx remains
-    original = reply.Body  # quoted original message from the sender
-    parts = []
-    if link:
-        parts.append(link)  # portal link pinned to the very top for easy clicking
-    if body:
-        parts.append(body)
-    reply.Body = "\n\n".join(parts) + (("\n\n" + original) if original else "")
     if html_body:
+        # HTML reply: summary + completed table + the customer's original message (kept intact)
+        top_parts = []
+        if link:
+            top_parts.append(link)
+        if body:
+            top_parts.append(body.replace("\n", "<br>"))
+        top_parts.append(html_body)
+        top = "<br><br>".join(top_parts)
         orig_html = reply.HTMLBody or ""
         if "<body" in orig_html.lower():
-            # prepend the completed table, keep the customer's original message below it
-            reply.HTMLBody = re.sub(
-                r"(<body[^>]*>)",
-                r"\1" + html_body + "<br><br><hr><br>",
-                orig_html, count=1, flags=re.IGNORECASE,
-            )
+            reply.HTMLBody = re.sub(r"(<body[^>]*>)", r"\1" + top + "<br><br><hr><br>", orig_html, count=1, flags=re.IGNORECASE)
         else:
-            reply.HTMLBody = "<html><body>" + html_body + "<br><br>" + orig_html + "</body></html>"
-        reply.BodyFormat = 2  # olFormatHTML — force HTML so tables aren't flattened
+            reply.HTMLBody = "<html><body>" + top + "<br><br>" + orig_html + "</body></html>"
+        reply.BodyFormat = 2  # force HTML; do NOT set reply.Body so the customer's table stays intact
+    else:
+        original = reply.Body  # quoted original message from the sender
+        parts = []
+        if link:
+            parts.append(link)  # portal link pinned to the very top for easy clicking
+        if body:
+            parts.append(body)
+        reply.Body = "\n\n".join(parts) + (("\n\n" + original) if original else "")
     if attachment:
         reply.Attachments.Add(attachment)
     reply.Send()
