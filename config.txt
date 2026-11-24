@@ -29,3 +29,11 @@ portal_domain = customer.epbrowser.com
 # IMPA mismatch check: "basic" (flag only clearly-unrelated codes + voltage mismatch),
 # "strict" (also flag weak <4-keyword matches), or "off".
 impa_check = basic
+
+# Outlook folder names used to organise processed emails.
+processed_folder = RFQ Processed
+failed_folder = RFQ Failed
+pricelist_history_folder = Pricelist History
+
+# Substring that identifies a pricelist attachment filename (e.g. "qtn").
+pricelist_name_pattern = qtn

@@ -64,3 +64,9 @@ PORTAL_DOMAIN = _cfg.get("portal_domain", "")
 # "strict" = also flag weak matches (<4 shared keywords)
 # "off" = never flag
 IMPA_CHECK = _cfg.get("impa_check", "basic").lower()
+
+# Outlook folder names + the pricelist filename pattern (no customer name hardcoded)
+PROCESSED_FOLDER = _cfg.get("processed_folder", "RFQ Processed")
+FAILED_FOLDER = _cfg.get("failed_folder", "RFQ Failed")
+PRICELIST_HISTORY_FOLDER = _cfg.get("pricelist_history_folder", "Pricelist History")
+PRICELIST_NAME_PATTERN = _cfg.get("pricelist_name_pattern", "qtn")

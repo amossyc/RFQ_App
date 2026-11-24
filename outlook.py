@@ -64,8 +64,8 @@ def reply_done(msg, body="", attachment=None, link=None, html_body=None):
     reply.Send()
     return True
 
-PROCESSED_FOLDER = "SINWA RFQ Processed"
-FAILED_FOLDER = "SINWA RFQ Failed"
+PROCESSED_FOLDER = config.PROCESSED_FOLDER
+FAILED_FOLDER = config.FAILED_FOLDER
 
 def _get_subfolder(name):
     inbox = get_inbox()
@@ -96,7 +96,7 @@ def move_to_failed(msg):
     """Move an RFQ email that failed import 3 times into the failed folder."""
     return move_to_folder(msg, get_failed_folder())
 
-PRICELIST_FOLDER = "SINWA Pricelist History"
+PRICELIST_FOLDER = config.PRICELIST_HISTORY_FOLDER
 
 def _scan_for_attachment(match):
     """Find inbox emails that have an attachment whose filename satisfies match(name)."""
@@ -125,14 +125,14 @@ def _scan_for_attachment(match):
 
 def _is_pricelist_name(name):
     n = name.lower()
-    return n.endswith(".xlsm") and "sinwa qtn" in n
+    return n.endswith(".xlsm") and config.PRICELIST_NAME_PATTERN.lower() in n
 
 def _is_no_offer_name(name):
     n = name.lower()
     return n.endswith(".xlsx") and ("no_offer" in n or "no offer" in n or "nooffer" in n)
 
 def get_pricelist_emails():
-    """Inbox emails carrying a pricelist (.xlsm with 'sinwa qtn' in the name)."""
+    """Inbox emails carrying a pricelist (.xlsm matching the pricelist filename pattern)."""
     return _scan_for_attachment(_is_pricelist_name)
 
 def get_no_offer_emails():
@@ -144,10 +144,10 @@ def save_pricelist_attachment(msg, dest_dir):
     for att in msg.Attachments:
         name = str(att.FileName)
         if _is_pricelist_name(name):
-            # old pricelist not kept: remove any existing 'sinwa qtn' .xlsm files
+            # old pricelist not kept: remove any existing pricelist .xlsm files
             for old in glob.glob(os.path.join(dest_dir, "*.xlsm")):
                 b = os.path.basename(old)
-                if "sinwa qtn" in b.lower() and not b.startswith("~$"):
+                if config.PRICELIST_NAME_PATTERN.lower() in b.lower() and not b.startswith("~$"):
                     try:
                         os.remove(old)
                     except Exception:

@@ -144,9 +144,14 @@ the app folder if relative.
 | `sheet_name` | pricelist worksheet name (e.g. `YourSheetName`) |
 | `portal_domain` | portal host (e.g. `customer.epbrowser.com`) |
 | `impa_check` | `basic` (default) / `strict` / `off` — see §8 |
+| `processed_folder` | Outlook folder for finished RFQ emails (default `RFQ Processed`) |
+| `failed_folder` | Outlook folder for RFQ emails that failed import 3× (default `RFQ Failed`) |
+| `pricelist_history_folder` | Outlook folder for emailed pricelist/no-offer files (default `Pricelist History`) |
+| `pricelist_name_pattern` | substring identifying a pricelist attachment filename (default `qtn`) |
 
 `config.py` exposes `PRICELIST_DIR`, `WORK` (alias), `PROFILE` (alias), `REPORTS_DIR`,
-`DB`, `CHECK_INTERVAL_MINUTES`, `SENDER_EMAIL`, `SHEET_NAME`, `PORTAL_DOMAIN`, `IMPA_CHECK`.
+`DB`, `CHECK_INTERVAL_MINUTES`, `SENDER_EMAIL`, `SHEET_NAME`, `PORTAL_DOMAIN`, `IMPA_CHECK`,
+`PROCESSED_FOLDER`, `FAILED_FOLDER`, `PRICELIST_HISTORY_FOLDER`, `PRICELIST_NAME_PATTERN`.
 
 ---
 
@@ -223,7 +228,10 @@ The remark logic runs in this order:
 6. **Default** → primary brand only.
 
 Tier sets: `GOOD = {GERMANY, UK/GERMANY, BMI GERMANY, BAHCO, PYRAMEX, PRO-VISE, IMA ITALY}`,
-`AVG = {FAPRO, STANLEY, TRAMONTINA, BOSCH, MAKITA}`.
+`AVG = {FAPRO, STANLEY, TRAMONTINA, BOSCH, MAKITA, SUMAKE, SUKAKE, IRENO}`.
+
+`tier()` uses substring matching, so brand variants (`TRAMONTINA BRAZIL`, `SUMAKE 100-500NM`,
+`SUMAKE/FAPRO`, `FAPRO 1000V`) also resolve to their tier.
 
 `detect_quality` reads the RFQ's "Remarks:" field (kept as the **last** non-empty one, since
 the template has a placeholder first) and/or the item description: `GOOD` → good;
@@ -259,6 +267,7 @@ Tokenizer normalisations (`_meaningful_tokens` / `_size_tokens`):
 - `NO.2` / `NO 2` → `NO2` (captures the Phillips/size number; `NO1`/`NO2`/`NO3` kept as tokens).
 - sizes: `14MM`, `14 MM`, `14X17MM`, ranges `10-32MM`; `27X24` is normalised to `24X27`.
 - decimal sizes stay one token (`2.0MM`, not `0MM`).
+- `SCREW DRIVER` → `SCREWDRIVER` (the two-word spelling is joined).
 - `GENERIC_WORDS` (see the set in `fill_quote.py`) are ignored: includes `ELECTRIC`,
   `PNEUMATIC`, `HYDRAULIC`, `AUTOMATIC`, `MANUAL`, `POWER`, `INDUSTRIAL`, `DIA`, `HEAD`,
   `BODY`, `SPLIETHOFF`, `GROUP`, `CATALOG`, `REF`, and common English stopwords.
@@ -269,6 +278,7 @@ Tokenizer normalisations (`_meaningful_tokens` / `_size_tokens`):
 6-digit numeric IMPA (with optional spaces/dashes), `IMPA…` / `IMPA CODE:…` labels,
 `Part No.:TP02246` part numbers, standalone T part numbers (`TA93278`, `TP02246`, `T02250`,
 `TP022465`), and spaced T part numbers (`TP 02250`) when `jex` appears in the description.
+Codes with a `CO-` prefix (the customer's internal code, e.g. `CO-683813`) are ignored.
 
 ---
 
@@ -361,8 +371,9 @@ processed check (so it re-runs even if already done).
   `L` (the parsed/matched IMPA, for reference — the Stk ID column `E` is left untouched).
   The RFQ line layout is: `C`=RFQ line id, `D`=Line number, `E`=Stk ID, `F`=Name,
   `G`=Qty, `H`=UOM, `I`=List Price, `J`=Line Total, `K`=Remarks, `L`=parsed IMPA.
-- Voltages are normalised before matching: `1,000V` → `1000V` and `AC 220V` / `AC220V` →
-  `220V`, so formatting differences don't cause a false voltage mismatch.
+- Voltages are normalised before matching: `1,000V` → `1000V`, `AC 220V` / `AC220V` → `220V`,
+  and ranges `220/240V` → `{220V, 240V}`. Close voltages are grouped (`200–240V` → `220V`,
+  `100–110V` → `110V`), so a 240V item matches a 220V request.
 - There are many `test_*.py` scripts in the development workspace (not included here) that
   encode the expected behavior of the matcher/quote logic — worth re-creating if you change
   `fill_quote.py`.
