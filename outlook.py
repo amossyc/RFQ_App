@@ -54,6 +54,7 @@ def reply_done(msg, body="", attachment=None, link=None, html_body=None):
             )
         else:
             reply.HTMLBody = "<html><body>" + html_body + "<br><br>" + orig_html + "</body></html>"
+        reply.BodyFormat = 2  # olFormatHTML — force HTML so tables aren't flattened
     if attachment:
         reply.Attachments.Add(attachment)
     reply.Send()

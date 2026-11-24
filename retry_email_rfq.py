@@ -66,6 +66,7 @@ if __name__ == "__main__":
             reply.HTMLBody = re.sub(r"(<body[^>]*>)", r"\1" + html_table + "<br><br><hr><br>", orig_html, count=1, flags=re.IGNORECASE)
         else:
             reply.HTMLBody = "<html><body>" + html_table + "<br><br>" + orig_html + "</body></html>"
+        reply.BodyFormat = 2  # olFormatHTML — force HTML so tables aren't flattened
     reply.Attachments.Add(out)
     reply.Send()
     print(f"Replied {'to ' + to if to else 'all'}")
