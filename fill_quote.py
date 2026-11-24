@@ -79,7 +79,8 @@ def load_pricelist(path):
     for impa, entry in raw.items():
         alt = entry.get("alt")
         if alt and alt in raw:
-            data[impa] = raw[alt]
+            data[impa] = dict(raw[alt])      # copy the target's data
+            data[impa]["_alt_alias"] = True  # mark alias so the description matcher skips it
         else:
             data[impa] = entry
     return data
@@ -332,6 +333,8 @@ def match_by_description(name, data):
     sizes = _size_tokens(name)
     scored = []
     for impa, e in data.items():
+        if e.get("_alt_alias"):
+            continue  # skip ALT aliases (duplicates of the canonical target)
         desc = str(e.get("desc") or "")
         if feats and not all(f in _priority_features(desc) for f in feats):
             continue
