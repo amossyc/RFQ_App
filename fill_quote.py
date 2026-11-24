@@ -234,6 +234,8 @@ def _meaningful_tokens(text):
     core = re.split(r"\s*\|\s*(?:IMPA|SSM|Ref\.)|Tender\s+Category|Vessel\s+Notes|Maker\s*:|Truncated", text or "", maxsplit=1, flags=re.IGNORECASE)[0]
     # remove thousands separators: 1,000V -> 1000V
     core = re.sub(r"(\d),(\d)", r"\1\2", core)
+    # join common two-word items: SCREW DRIVER -> SCREWDRIVER
+    core = re.sub(r"\bSCREW\s+DRIVER\b", "SCREWDRIVER", core, flags=re.IGNORECASE)
     # remove the inch symbol " (it follows a digit, e.g. 1/2") so it isn't confused with brand quotes
     core = re.sub(r'(\d)"', r'\1 ', core)
     # strip quoted brand names (e.g. "BAHCO") — metadata, not a descriptive keyword
