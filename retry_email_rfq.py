@@ -4,7 +4,7 @@ Usage:
   python retry_email_rfq.py <SUBJECT>             -> Reply-All
   python retry_email_rfq.py <SUBJECT> <TO_ADDRESS> -> reply to that address only
 """
-import sys, os
+import sys, os, re
 import win32com.client
 import fill_quote
 import email_rfq
@@ -59,6 +59,13 @@ if __name__ == "__main__":
         reply = msg.ReplyAll()   # reply-all by default
     outlook.strip_image_attachments(reply)  # drop inline signature/logos
     reply.Body = summary + "\n\n" + (reply.Body or "")
+    if html_table:
+        # prepend the clean completed table, keep the customer's original table below
+        orig_html = reply.HTMLBody or ""
+        if "<body" in orig_html.lower():
+            reply.HTMLBody = re.sub(r"(<body[^>]*>)", r"\1" + html_table + "<br><br><hr><br>", orig_html, count=1, flags=re.IGNORECASE)
+        else:
+            reply.HTMLBody = "<html><body>" + html_table + "<br><br>" + orig_html + "</body></html>"
     reply.Attachments.Add(out)
     reply.Send()
     print(f"Replied {'to ' + to if to else 'all'}")

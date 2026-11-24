@@ -207,6 +207,23 @@ def build_html_table(html_body, filled_values):
     return re.sub(r"<tr[^>]*>.*?</tr>", transform, table, flags=re.IGNORECASE | re.DOTALL)
 
 
+def build_clean_html_table(lines, filled_values):
+    """Build a simple, clean HTML table (separate from the customer's table)."""
+    hdr = ["Line No", "Stk ID", "Name", "Qty", "UOM", "Price", "Description", "IMPA"]
+    out = ['<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px">']
+    out.append("<tr>" + "".join("<th style='background:#eeeeee'>%s</th>" % h for h in hdr) + "</tr>")
+    for i, ln in enumerate(lines):
+        f = filled_values[i] if i < len(filled_values) else {}
+        impa = ln.get("stk") or f.get("impa") or ""
+        price = f.get("price") if f.get("price") is not None else ""
+        remark = f.get("remark") or ""
+        cells = [ln.get("line_no") or "", ln.get("stk") or "", ln.get("name") or "",
+                 ln.get("qty") or "", ln.get("uom") or "", price, remark, impa]
+        out.append("<tr>" + "".join("<td>%s</td>" % html.escape(str(c)) for c in cells) + "</tr>")
+    out.append("</table>")
+    return "".join(out)
+
+
 def newest_pricelist():
     files = [f for f in glob.glob(os.path.join(config.PRICELIST_DIR, "*.xlsm"))
              if not os.path.basename(f).startswith("~$")]
@@ -233,7 +250,7 @@ def process_email_rfq(html_body, output_path, pricelist_path=None):
     # read the filled values, then rebuild the output as the customer's table + 3 columns
     filled_values = _read_filled_values(output_path)
     build_filled_table(html_body, lines, output_path, output_path)
-    rep["html_table"] = build_html_table(html_body, filled_values)
+    rep["html_table"] = build_clean_html_table(lines, filled_values)
     rep["lines"] = len(lines)
     return rep
 
