@@ -5,7 +5,7 @@ WORK = config.WORK
 PRICELIST_DIR = config.PRICELIST_DIR
 
 GOOD = {"GERMANY", "UK/GERMANY", "BMI GERMANY", "BAHCO", "PYRAMEX", "PRO-VISE", "IMA ITALY"}
-AVG = {"FAPRO", "STANLEY", "TRAMONTINA", "BOSCH", "MAKITA"}
+AVG = {"FAPRO", "STANLEY", "TRAMONTINA", "BOSCH", "MAKITA", "SUMAKE", "SUKAKE", "IRENO"}
 SPECIAL_KEYS = ("STAINLESS", "S.STEEL", "NON-SPARK", "NONSPARK", "NO-SPARK", "NOSPARK", "NON SPARK")
 
 # 6 digits, with optional spaces or dashes between digit groups: 616623 / 61 66 23 / 61-66-23
@@ -108,9 +108,9 @@ def pick_price(e):
 
 def tier(brand):
     b = brand.upper()
-    if b in GOOD:
+    if any(g in b for g in GOOD):
         return "good"
-    if b in AVG:
+    if any(a in b for a in AVG):
         return "avg"
     return "cheap"
 
