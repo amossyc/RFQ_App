@@ -9,7 +9,8 @@ AVG = {"FAPRO", "STANLEY", "TRAMONTINA", "BOSCH", "MAKITA", "SUMAKE", "SUKAKE", 
 SPECIAL_KEYS = ("STAINLESS", "S.STEEL", "NON-SPARK", "NONSPARK", "NO-SPARK", "NOSPARK", "NON SPARK")
 
 # 6 digits, with optional spaces or dashes between digit groups: 616623 / 61 66 23 / 61-66-23
-CODE_RE = re.compile(r"\b\d(?:[\s\-]*\d){5}\b")
+# (but not "CO-123456" — the customer's internal code, not an IMPA)
+CODE_RE = re.compile(r"(?<!CO[- ])\b\d(?:[\s\-]*\d){5}\b", re.IGNORECASE)
 # "IMPA" directly attached to the code (no space/hyphen): IMPA612832 / IMPA 612832 / IMPA-612832
 IMPA_RE = re.compile(r"IMPA[\s\-\:\.]*(\d(?:[\s\-]*\d){5})", re.IGNORECASE)
 # "IMPA CODE:B850601" / "IMPA CODE: 850601" (with optional letter prefix)
