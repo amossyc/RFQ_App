@@ -86,6 +86,13 @@ def load_pricelist(path):
             data[impa] = entry
     return data
 
+def _norm_code(v):
+    """Normalise an IMPA code to a string (drop float '.0' suffixes)."""
+    s = str(v or "").strip()
+    if s.endswith(".0"):
+        s = s[:-2]
+    return s
+
 def load_no_offer(path):
     """Return the set of IMPA codes in the 'do not quote' file (no_offer.xlsx)."""
     codes = set()
@@ -96,7 +103,7 @@ def load_no_offer(path):
     for row in ws.iter_rows(min_row=2, values_only=True):
         v = row[0]
         if v not in (None, ""):
-            codes.add(str(v).strip())
+            codes.add(_norm_code(v))
     wb.close()
     return codes
 
@@ -495,7 +502,7 @@ def fill_quote(input_path, pricelist_path, output_path):
             ws.cell(row=r, column=11).value = None
             continue
         stk = ws.cell(row=r, column=5).value
-        impa = str(stk).strip() if stk not in (None, "") else ""
+        impa = _norm_code(stk) if stk not in (None, "") else ""
         if impa == "":
             codes = extract_impa_codes(name)
             for code in codes:
@@ -560,6 +567,8 @@ def fill_quote(input_path, pricelist_path, output_path):
         if remark:
             ws.cell(row=r, column=11).value = remark
     wb.save(output_path)
+    # keep the email summary tidy: drop known no-offer codes from the flagged list
+    flagged = [f for f in flagged if _norm_code(f[1]) not in no_offer]
     return {"total": total, "flagged": flagged, "pricelist": len(data), "auto_matched": auto}
 
 def newest(pattern):
