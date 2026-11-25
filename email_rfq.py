@@ -56,7 +56,12 @@ def parse_email_table(html_body):
                     header_map[f] = j
             break
     if not header_map:
-        return []
+        # headerless table: assume the common 5-column layout Line No / Stk ID / Name / Qty / UOM
+        if parsed and len(parsed[0]) >= 5:
+            header_map = {"line_no": 0, "stk": 1, "name": 2, "qty": 3, "uom": 4}
+            header_idx = -1
+        else:
+            return []
 
     def get(vals, field):
         j = header_map.get(field)
