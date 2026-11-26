@@ -32,6 +32,56 @@ def _field_for(header_text):
     return None
 
 
+def _infer_headerless_layout(parsed):
+    """Infer column roles for a headerless table from the first few data rows."""
+    sample = [r for r in parsed if len(r) >= 4][:6]
+    if not sample:
+        return None
+    ncols = max(len(r) for r in sample)
+    if ncols < 4:
+        return None
+
+    cols = []
+    for j in range(ncols):
+        vals = [str(r[j]).strip() for r in sample if j < len(r) and str(r[j]).strip()]
+        cols.append(vals)
+
+    def is_num(s):
+        try:
+            float(s.replace(",", ""))
+            return True
+        except Exception:
+            return False
+
+    def is_uom(s):
+        return bool(re.fullmatch(r"[A-Za-z.]{1,5}", s))
+
+    def is_code(s):
+        return bool(re.fullmatch(r"\d{1,3}-\d{1,3}-\d{1,3}", s)) or bool(re.fullmatch(r"\d{5,7}", s))
+
+    layout = {"line_no": 0}
+    for j in range(1, ncols):
+        vals = cols[j]
+        if not vals:
+            continue
+        if all(is_uom(v) for v in vals):
+            layout.setdefault("uom", j)
+        elif all(is_code(v) for v in vals):
+            layout.setdefault("stk", j)
+        elif all(is_num(v) for v in vals):
+            layout.setdefault("qty", j)
+
+    used = set(layout.values())
+    for j in range(1, ncols):
+        if j not in used:
+            layout.setdefault("name", j)
+            break
+
+    if {"line_no", "name", "qty", "uom"} <= set(layout):
+        return layout
+    return None
+
+
 def parse_email_table(html_body):
     """Parse an RFQ table from the email HTML body into a list of line dicts.
 
@@ -56,9 +106,9 @@ def parse_email_table(html_body):
                     header_map[f] = j
             break
     if not header_map:
-        # headerless table: assume the common 5-column layout Line No / Stk ID / Name / Qty / UOM
-        if parsed and len(parsed[0]) >= 5:
-            header_map = {"line_no": 0, "stk": 1, "name": 2, "qty": 3, "uom": 4}
+        # headerless table: infer the columns from the data
+        header_map = _infer_headerless_layout(parsed) or {}
+        if header_map:
             header_idx = -1
         else:
             return []
