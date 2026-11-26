@@ -95,10 +95,21 @@ def _get_table_header(html_body):
     return [], []
 
 
-def build_portal_xlsx(lines, path):
+def extract_quality_remark(html_body):
+    """Pull a quality instruction like '== QUOTE IRENO OR SAME AS REMARK ==' from the body."""
+    text = re.sub(r"<[^>]+>", " ", html_body or "")
+    text = html.unescape(text)
+    m = re.search(r"==\s*QUOTE\s+(.*?)\s*==", text, re.IGNORECASE | re.DOTALL)
+    return m.group(1).strip() if m else ""
+
+
+def build_portal_xlsx(lines, path, quality=""):
     """Build an Excel in the portal-export layout (same columns fill_quote expects)."""
     wb = openpyxl.Workbook()
     ws = wb.active
+    if quality:
+        ws.cell(row=1, column=5).value = "Remarks:"
+        ws.cell(row=1, column=6).value = quality
     for i, ln in enumerate(lines):
         r = 2 + i
         ws.cell(row=r, column=1).value = r                     # A: counter
@@ -246,7 +257,8 @@ def process_email_rfq(html_body, output_path, pricelist_path=None):
         raise SystemExit("No pricelist found.")
     print("Pricelist:", pl)
     tmp = output_path + ".tmp.xlsx"
-    build_portal_xlsx(lines, tmp)
+    quality = extract_quality_remark(html_body)
+    build_portal_xlsx(lines, tmp, quality=quality)
     rep = fill_quote.fill_quote(tmp, pl, output_path)
     try:
         os.remove(tmp)
