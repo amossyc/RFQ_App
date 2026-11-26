@@ -87,10 +87,11 @@ def load_pricelist(path):
     return data
 
 def _norm_code(v):
-    """Normalise an IMPA code to a string (drop float '.0' suffixes)."""
+    """Normalise an IMPA code to a 6-digit string (drop spaces, dashes, and float '.0')."""
     s = str(v or "").strip()
     if s.endswith(".0"):
         s = s[:-2]
+    s = re.sub(r"[\s\-]", "", s)
     return s
 
 def load_no_offer(path):
