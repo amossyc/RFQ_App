@@ -130,6 +130,11 @@ def detect_quality(text):
         return "avg"
     return None
 
+def detect_two_prices(text):
+    """True when the customer asked for two price options (e.g. 'QUOTE TWO PRICES')."""
+    t = (text or "").upper()
+    return bool(re.search(r"TWO[ -]PRICE|2[ -]PRICE", t))
+
 def is_special(text):
     t = (text or "").upper()
     if any(k in t for k in SPECIAL_KEYS):
@@ -396,7 +401,7 @@ def mentioned_brand(name):
     m = re.search(r"RefernenceNo\s*:\s*\d+\s*[,\s]\s*([A-Za-z0-9\-\./]+)", name or "", re.IGNORECASE)
     return m.group(1).upper() if m else None
 
-def quote_item(entry, name, quality):
+def quote_item(entry, name, quality, two_prices=False):
     """Return (price, remark) for a line item, honoring any brand the customer named."""
     brands = entry["brands"]
     primary_price = pick_price(entry)
@@ -463,6 +468,14 @@ def quote_item(entry, name, quality):
             if tier(b) == "avg":
                 return (num(p) if num(p) is not None else primary_price), b
         # no FAPRO/avg brand -> cheap + next-cheapest alternative
+        alts = [(b, num(p)) for b, p in brands[1:] if num(p) is not None]
+        if alts:
+            cheap = min(alts, key=lambda x: x[1])
+            return primary_price, f"{primary} / {fmt_price(cheap[1])} {cheap[0]}"
+        return primary_price, primary
+
+    # 6. "TWO PRICES" request -> primary + cheapest alternative (two options)
+    if two_prices:
         alts = [(b, num(p)) for b, p in brands[1:] if num(p) is not None]
         if alts:
             cheap = min(alts, key=lambda x: x[1])
@@ -562,7 +575,8 @@ def fill_quote(input_path, pricelist_path, output_path):
             ws.cell(row=r, column=11).value = None
             continue
         quality = detect_quality(top_remarks) or detect_quality(name)
-        price, remark = quote_item(entry, name, quality)
+        two_prices = detect_two_prices(top_remarks)
+        price, remark = quote_item(entry, name, quality, two_prices)
         ws.cell(row=r, column=9).value = price
         if remark:
             ws.cell(row=r, column=11).value = remark

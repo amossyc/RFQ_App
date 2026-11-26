@@ -146,11 +146,16 @@ def _get_table_header(html_body):
 
 
 def extract_quality_remark(html_body):
-    """Pull a quality instruction like '== QUOTE IRENO OR SAME AS REMARK ==' from the body."""
+    """Pull quality/two-price instructions from the body (e.g. '== QUOTE IRENO ==', 'TWO PRICES')."""
     text = re.sub(r"<[^>]+>", " ", html_body or "")
     text = html.unescape(text)
+    parts = []
     m = re.search(r"==\s*QUOTE\s+(.*?)\s*==", text, re.IGNORECASE | re.DOTALL)
-    return m.group(1).strip() if m else ""
+    if m:
+        parts.append(m.group(1).strip())
+    if re.search(r"TWO[ -]PRICE|2[ -]PRICE", text, re.IGNORECASE):
+        parts.append("TWO PRICES")
+    return " ".join(parts)
 
 
 def build_portal_xlsx(lines, path, quality=""):
