@@ -280,6 +280,11 @@ def _meaningful_tokens(text):
     core = re.sub(r"\bSUS\d+\b", "STAINLESS", core)
     # normalize "NO.2" / "NO 2" -> "NO2" (Phillips / size number)
     core = re.sub(r"NO\.\s*(\d)", r"NO\1", core, flags=re.IGNORECASE)
+    # normalize "PH2" (Phillips #2) -> "NO2"; "PH2x100" -> "NO2 100"
+    core = re.sub(r"\bPH(\d)\s*[Xx]\s*(\d+(?:\.\d+)?)", r"NO\1 \2", core, flags=re.IGNORECASE)
+    core = re.sub(r"\bPH(\d)", r"NO\1", core, flags=re.IGNORECASE)
+    # preserve model numbers like "BE-8040" / "BE-8620" -> "BE8040" (match the pricelist)
+    core = re.sub(r"\b([A-Za-z]{1,4})-(\d{3,6})\b", r"\1\2", core)
     # normalize "AC220V" -> "220V" so voltages match regardless of AC/DC prefix
     core = re.sub(r"\bAC\s*(\d+V)\b", r"\1", core, flags=re.IGNORECASE)
     # protect inch fractions "3/8" so the slash survives as part of the token
@@ -362,6 +367,11 @@ def _leading_match(name, desc):
             break
     return n
 
+def _model_codes(tokens):
+    """Model/part numbers like BE8040 / BE8620 — strong identifiers."""
+    return {t for t in tokens if re.fullmatch(r"[A-Za-z]{1,4}\d{3,6}", t)}
+
+
 def match_by_description(name, data):
     """Conservative fallback: match a no-code item to a pricelist row by name.
     Priority features (NON-SPARK / STAINLESS / 100V) must match; size gives a strong
@@ -375,6 +385,7 @@ def match_by_description(name, data):
     volts = _voltage(name)
     tokens = {t for t in _meaningful_tokens(name) if not re.search(r"\d.*MM", t)}
     sizes = _size_tokens(name)
+    name_models = _model_codes(tokens)
     scored = []
     for impa, e in data.items():
         if e.get("_alt_alias"):
@@ -387,10 +398,12 @@ def match_by_description(name, data):
         dtokens = set(_meaningful_tokens(desc))
         overlap = len(tokens & dtokens)  # distinct shared keywords
         size_overlap = len(sizes & _size_tokens(desc)) if sizes else 0
-        if overlap + (1 if size_overlap else 0) < 3:
+        model_match = bool(name_models & _model_codes(dtokens))
+        if not model_match and overlap + (1 if size_overlap else 0) < 3:
             continue  # need enough evidence: shared type words + a size match
         size_bonus = 10 * size_overlap if overlap >= 3 else 0
-        scored.append((overlap + size_bonus, impa))
+        model_bonus = 100 if model_match else 0  # exact model number is a strong signal
+        scored.append((overlap + size_bonus + model_bonus, impa))
     if not scored:
         return None
     scored.sort(key=lambda x: -x[0])
