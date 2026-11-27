@@ -67,14 +67,14 @@ def load_pricelist(path):
         }
         alt = row[alt_col] if alt_col is not None else None
         if alt not in (None, ""):
-            entry["alt"] = str(alt).strip()
+            entry["alt"] = _norm_code(alt)
         impa = row[impa_col]
         if impa in (None, ""):
             nocode += 1
             entry["no_code"] = True
             raw[f"NOCODE_{nocode}"] = entry
         else:
-            raw[str(impa).strip()] = entry
+            raw[_norm_code(impa)] = entry
     wb.close()
     # resolve ALT references: a row whose ALT points to another IMPA quotes that IMPA instead
     for impa, entry in raw.items():
