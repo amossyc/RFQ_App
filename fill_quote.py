@@ -11,6 +11,8 @@ SPECIAL_KEYS = ("STAINLESS", "S.STEEL", "NON-SPARK", "NONSPARK", "NO-SPARK", "NO
 # 6 digits, with optional spaces or dashes between digit groups: 616623 / 61 66 23 / 61-66-23
 # (but not "CO-123456" — the customer's internal code, not an IMPA)
 CODE_RE = re.compile(r"(?<!CO[- ])\b\d(?:[\s\-]*\d){5}\b", re.IGNORECASE)
+# 9-digit "unitor" customer codes, with optional spaces/dashes: 093233601 / 093-233601
+UNITOR_RE = re.compile(r"(?<!CO[- ])\b\d(?:[\s\-]*\d){8}\b", re.IGNORECASE)
 # "IMPA" directly attached to the code (no space/hyphen): IMPA612832 / IMPA 612832 / IMPA-612832
 IMPA_RE = re.compile(r"IMPA[\s\-\:\.]*(\d(?:[\s\-]*\d){5})", re.IGNORECASE)
 # "IMPA CODE:B850601" / "IMPA CODE: 850601" (with optional letter prefix)
@@ -76,12 +78,23 @@ def load_pricelist(path):
         else:
             raw[_norm_code(impa)] = entry
     wb.close()
-    # resolve ALT references: a row whose ALT points to another IMPA quotes that IMPA instead
+    # resolve ALT references (following chains) so a row whose ALT points to another IMPA
+    # quotes that IMPA instead — e.g. unitor code 093233601 -> 233601 -> 850462
+    def _resolve_alt_chain(start):
+        seen = {start}
+        cur = start
+        while True:
+            alt = raw[cur].get("alt")
+            if not alt or alt not in raw or alt in seen:
+                return cur
+            cur = alt
+            seen.add(cur)
+
     for impa, entry in raw.items():
-        alt = entry.get("alt")
-        if alt and alt in raw:
-            data[impa] = dict(raw[alt])      # copy the target's data
-            data[impa]["_alt_alias"] = True  # mark alias so the description matcher skips it
+        target = _resolve_alt_chain(impa)
+        if target != impa:
+            data[impa] = dict(raw[target])      # copy the final target's data
+            data[impa]["_alt_alias"] = True     # mark alias so the description matcher skips it
         else:
             data[impa] = entry
     return data
@@ -160,6 +173,11 @@ def extract_impa_codes(name):
     for m in CODE_RE.finditer(name):
         code = re.sub(r"[\s\-]", "", m.group(0))
         if len(code) == 6 and code != "999999" and code not in out:
+            out.append(code)
+    # 9-digit unitor codes (customer's own numbering) -> normalize to 9 digits
+    for m in UNITOR_RE.finditer(name):
+        code = re.sub(r"[\s\-]", "", m.group(0))
+        if len(code) == 9 and code not in out:
             out.append(code)
     # also match "IMPA612832" / "IMPA 612832" / "IMPA-612832" (code attached to "IMPA")
     for m in IMPA_RE.finditer(name):
