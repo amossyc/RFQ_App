@@ -121,7 +121,7 @@ def run_email_rfqs(send_reply=True):
             ref = extract_ref(e["subject"]) or _safe_filename(extract_tq(e["subject"]))
             html = e["msg"].HTMLBody or ""
             out_path = os.path.join(fill_quote.WORK, f"{ref}-done.xlsx")
-            rep = email_rfq.process_email_rfq(html, out_path, pricelist_path=prclist)
+            rep = email_rfq.process_email_rfq(html, out_path, pricelist_path=prclist, text_body=e["msg"].Body or "")
             if not rep:
                 print("  no table lines found")
                 continue

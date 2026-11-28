@@ -134,6 +134,36 @@ def parse_email_table(html_body):
     return lines
 
 
+TEXT_LINE_RE = re.compile(r"^\s*(\d{1,3})\s+(\d{6})\s+(.+?)\s+(\d+(?:\.\d+)?)\s*$")
+
+
+def parse_text_lines(body):
+    """Parse a plain-text RFQ list (one item per line: line_no + 6-digit code + name + qty)."""
+    lines = []
+    for raw in (body or "").splitlines():
+        m = TEXT_LINE_RE.match(raw.strip())
+        if not m:
+            continue
+        line_no, stk, name, qty = m.groups()
+        name = name.strip()
+        if not name:
+            continue
+        lines.append({
+            "line_no": line_no,
+            "line_type": "",
+            "stk": stk,
+            "name": name,
+            "qty": qty,
+            "uom": "",
+        })
+    return lines
+
+
+def has_text_table(body):
+    """True when the plain-text body has at least 2 item lines (no HTML table)."""
+    return len(parse_text_lines(body)) >= 2
+
+
 def _get_table_header(html_body):
     """Return (header_cells, field_order) from the email table's header row."""
     for r in re.findall(r"<tr[^>]*>(.*?)</tr>", html_body or "", re.IGNORECASE | re.DOTALL):
@@ -146,13 +176,16 @@ def _get_table_header(html_body):
 
 
 def extract_quality_remark(html_body):
-    """Pull quality/two-price instructions from the body (e.g. '== QUOTE IRENO ==', 'TWO PRICES')."""
+    """Pull quality/two-price instructions from the body (e.g. '== QUOTE IRENO ==', 'AVG !', 'TWO PRICES')."""
     text = re.sub(r"<[^>]+>", " ", html_body or "")
     text = html.unescape(text)
     parts = []
     m = re.search(r"==\s*QUOTE\s+(.*?)\s*==", text, re.IGNORECASE | re.DOTALL)
     if m:
         parts.append(m.group(1).strip())
+    m2 = re.search(r"QUOTE\s*(\([^)]*\))", text, re.IGNORECASE | re.DOTALL)
+    if m2:
+        parts.append(m2.group(1).strip())
     if re.search(r"TWO[ -]PRICE|2[ -]PRICE", text, re.IGNORECASE):
         parts.append("TWO PRICES")
     return " ".join(parts)
@@ -197,6 +230,10 @@ def build_filled_table(html_body, lines, filled_path, output_path):
     wb.close()
 
     header_cells, field_order = _get_table_header(html_body)
+    if not field_order:
+        # no HTML table (plain-text RFQ): use a standard 5-column layout
+        header_cells = ["Line No", "Stk ID", "Name", "Qty", "UOM"]
+        field_order = ["line_no", "stk", "name", "qty", "uom"]
 
     wb2 = openpyxl.Workbook()
     ws2 = wb2.active
@@ -301,8 +338,10 @@ def newest_pricelist():
     return sorted(files, key=os.path.getmtime)[-1] if files else None
 
 
-def process_email_rfq(html_body, output_path, pricelist_path=None):
+def process_email_rfq(html_body, output_path, pricelist_path=None, text_body=None):
     lines = parse_email_table(html_body)
+    if not lines and text_body:
+        lines = parse_text_lines(text_body)
     if not lines:
         print("No table lines found in the email.")
         return None
@@ -312,7 +351,7 @@ def process_email_rfq(html_body, output_path, pricelist_path=None):
         raise SystemExit("No pricelist found.")
     print("Pricelist:", pl)
     tmp = output_path + ".tmp.xlsx"
-    quality = extract_quality_remark(html_body)
+    quality = extract_quality_remark(html_body) or extract_quality_remark(text_body or "")
     build_portal_xlsx(lines, tmp, quality=quality)
     rep = fill_quote.fill_quote(tmp, pl, output_path)
     try:

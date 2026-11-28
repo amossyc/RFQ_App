@@ -4,6 +4,7 @@ import glob
 import sys
 import win32com.client
 import config
+import email_rfq
 
 RFQ_ENTRY_RE = re.compile(
     r"https?://" + re.escape(config.PORTAL_DOMAIN or "your-portal.example.com") + r"/portal-extf?/entry\?access=[A-Za-z0-9]+",
@@ -253,7 +254,7 @@ def get_email_table_rfqs():
             link = extract_entry_link(msg.Body) or extract_entry_link(msg.HTMLBody)
             if link:
                 continue
-            if "<table" not in (msg.HTMLBody or "").lower():
+            if "<table" not in (msg.HTMLBody or "").lower() and not email_rfq.has_text_table(msg.Body or ""):
                 continue
             result.append({
                 "msg": msg,
